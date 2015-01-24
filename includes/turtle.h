@@ -3,10 +3,13 @@
 #include "blackBoxTesting.h"
 
 
-void checkInput(int argc, char *argv[]);
-void printCommandLineError();
+int checkInput(int argc, char *argv[], int testing);
+void printCommandLineError(int testing);
+FILE * processInput(int argc, char *argv[], int testing);
 
 
 
 // TESTING FUNCTIONS
-void runTurtleTests();
+void runWhiteBoxTesting();
+void runCommandLineTests();
+void testCommandLine();
