@@ -1,8 +1,6 @@
 
 #include "../includes/turtle.h"
 
-#define TESTING 1
-#define NO_TESTING 0
 #define TEST_STR_LEN 100
 
 int main(int argc, char *argv[])
@@ -14,17 +12,38 @@ int main(int argc, char *argv[])
         exit(1);
     }
     
-    FILE *fp = processInput(argc, argv, NO_TESTING);
+    processInput(argc, argv, NO_TESTING);
+    
+    parse();
+    
+    
 
 }
 
 
 int checkInput(int argc, char *argv[], int testing)
 {
+    // check for correct number of arguments
     if(argc == 1 || argc > 3) {
         printCommandLineError(testing);
         return 0;
     }
+    
+    // if 2 arguments, check for file located at filepath of argv[1]
+    if(argc == 2) {
+        FILE *fp = fopen(argv[1], "r");
+        if(fp == NULL) {
+            if(!testing) {
+                fprintf(stderr, "ERROR: Unable to locate file at '%s'\n", argv[1]);
+                printCommandLineError(testing);
+                fclose(fp);
+                return 0;
+            }
+        }
+        fclose(fp);
+    }
+    
+    // if 3 arguments, check for valid testing input
     if(argc == 3) {
         if(strcmp(argv[1],"test") != 0) {
             printCommandLineError(testing);
@@ -46,18 +65,12 @@ void printCommandLineError(int testing)
     }
 }
 
-FILE * processInput(int argc, char *argv[], int testing)
+void processInput(int argc, char *argv[], int testing)
 {
-    // if two arguments, open file indicated in argv[1]
-    FILE *fp = NULL;
+    // if two arguments, set up the parse heper using filepath from argv[1]
     if(argc == 2) {
-        fp = fopen(argv[1], "r");
-        if(fp == NULL) {
-            if(!testing) {
-                fprintf(stderr, "ERROR: Unable to locate file at '%s'. Program has exited\n", argv[1]);
-                exit(1);
-            }
-       }
+        createParseHelper();
+        initialiseParseHelper(argv[1], testing);
     }
     
     
@@ -78,7 +91,6 @@ FILE * processInput(int argc, char *argv[], int testing)
         }
     }
     
-    return fp;
 }
     
 
@@ -86,22 +98,23 @@ FILE * processInput(int argc, char *argv[], int testing)
 
 void runWhiteBoxTesting()
 {
-	  sput_start_testing();
 	  
     runCommandLineTests();
     runParserWhiteBoxTests();
     
-	  sput_finish_testing();
 }
 
 
 void runCommandLineTests()
 {  
+	  sput_start_testing();
 	  sput_set_output_stream(NULL);	
     
     sput_enter_suite("testCommandLine(): Checking command line input is processed properly");
     sput_run_test(testCommandLine);
     sput_leave_suite();
+    
+	  sput_finish_testing();
     
 }
 
@@ -134,6 +147,10 @@ void testCommandLine()
     sput_fail_unless(checkInput(argc, argv, TESTING) == 1, "Input check OK when 3 arguments and third is 'black'");
     strcpy(argv[2], "testwrong");
     sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check OK when 3 arguments and third is neither 'all', 'black' or 'white'");
+    
+    for(int i = 0; i < 4; i++) {
+        free(argv[i]);
+    }
 
 }
 
