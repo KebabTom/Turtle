@@ -17,7 +17,10 @@ struct parseHelper {
   int hangingBraces;
   char token[TOKEN_LENGTH];
   
+  double val;
+  
   Variable varList[NUMBER_OF_VARIABLES];
+  char operators[NUMBER_OF_OPERATORS];
   
   int testing;
 } ;
@@ -64,6 +67,11 @@ void initialiseParseHelper(char *filePath, int testing)
     
     initialiseVariableList(pH);
     
+    pH->operators[0] = '+';
+    pH->operators[1] = '-';
+    pH->operators[2] = '*';
+    pH->operators[3] = '/';
+    
     pH->testing = testing;
 
 }
@@ -106,13 +114,12 @@ void parse()
     
     getToken(pH);
     if(strcmp(pH->token, "{") != 0) {
-        if(!pH->testing) {
-            fprintf(stderr, "Syntax error - program should start with a single {\n");
-            exit(1);
-        }
+        printSyntaxError(pH, "Syntax error - program should start with a single {");
     } else {
         pH->hangingBraces++;
+        expect(instrctlist);
     }
+      printf("Syntax ok\n");
     
     
 }
@@ -120,7 +127,10 @@ void parse()
 void getToken(ParseHelper pH)
 {
     if(fscanf(pH->tokenFP, "%s", pH->token) != 1) {
-        fprintf(stderr, "ERROR - invalid token");
+        if(fgetc(pH->tokenFP) == EOF) {
+            printSyntaxError(pH, "Syntax error - closing brackets do not match opening brackets");
+        }
+        printSyntaxError(pH, "Syntax error - invalid token");
         exit(1);
     }
     
@@ -128,11 +138,25 @@ void getToken(ParseHelper pH)
 
 int expect(TokenType tType)
 {
+    ParseHelper pH = getParseHelperPointer(NULL);
+    printf("here\n");
     getToken(pH);
     switch(tType) {
         case instrctlist :
             processInstrctList(pH);
             break;
+        case instruction :
+            processInstruction(pH);
+            break;
+        case set :
+            processSet(pH);
+            break;
+        case polish :
+            processPolish(pH);
+            break;
+        default :
+            fprintf(stderr, "incorrect enum passed to expect()\n");
+            exit(1);
     }
     return 1;
 }
@@ -148,8 +172,93 @@ int processInstrctList(ParseHelper pH)
         expect(instruction);
         return 1;
     }
+    if(strcmp(pH->token, "SET") == 0) {
+        expect(set);
+        return 1;
+    }
     if(strcmp(pH->token, "}") == 0) {
-        
+        pH->hangingBraces--;
+        if(pH->hangingBraces == 0) {
+            char c;
+            while((c = fgetc(pH->tokenFP) ) != EOF) {
+                if(c != ' ' && c != '\n') {
+                    printSyntaxError(pH, "Syntax error - additional input detected. Are you missing a closing brace?");
+                    return 0;
+                }
+            }
+        } else {
+            expect(instrctlist);
+        }
+        return 1;
+    }
+    
+    printSyntaxError(pH, "Syntax error - Invalid instruction");
+    return 0;
+}
+
+int processInstruction(ParseHelper pH)
+{
+    char *remainder;
+    pH->val = strtod(pH->token, &remainder);
+    if(remainder[0] != '\0') {
+        printSyntaxError(pH, "Syntax error - expecting number following instruction");
+        return 0;
+    } else {
+        expect(instrctlist);
+        return 1;
+    }
+}
+
+int processSet(ParseHelper pH)
+{
+    if(strlen(pH->token) != 1) {
+        printSyntaxError(pH, "Syntax error - SET should be followed by a single variable");
+        return 0;
+    }
+    
+    if(!checkValidVariable(pH->token[0], pH) ) {
+        printSyntaxError(pH, "Syntax error - SET should be followed by a single variable from A-Z");
+        return 0;
+    }
+    
+    getToken(pH);
+    if(strcmp(pH->token, ":=") != 0) {
+        printSyntaxError(pH, "Syntax error - all SET commands should be followed by variable and ':='");
+        return 0;
+    }
+    expext(polish);
+    
+    return 1;
+}
+
+int processPolish(ParseHelper pH)
+{
+
+
+    return 1;
+}
+
+/*
+returns 1 if passed character is within list of potential variables. If not, returns 0.
+*/
+int checkValidVariable(char c, ParseHelper pH)
+{
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        if(pH->varList[i]->varName == c) {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+void printSyntaxError(ParseHelper pH, char *message)
+{
+    if(!pH->testing) {
+        fprintf(stderr, "%s\nError at: %s\n", message, pH->token);
+        exit(1);
+    }
+}
 
 
 void runParserWhiteBoxTests()

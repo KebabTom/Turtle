@@ -5,6 +5,7 @@
 
 #define TOKEN_LENGTH 100
 #define NUMBER_OF_VARIABLES 26
+#define NUMBER_OF_OPERATORS 4
 
 #define TESTING 1
 #define NO_TESTING 0
@@ -14,7 +15,7 @@ typedef struct variable *Variable;
 
 
 enum tokenType {
-  instrctlist, instruction, fd, lt, rt, varnum
+  instrctlist, instruction, fd, lt, rt, varnum, set, polish
 } ;
 typedef enum tokenType TokenType;
 
@@ -30,6 +31,13 @@ void freeParseHelper();
 void parse();
 void getToken(ParseHelper pH);
 int expect(TokenType tType);
+int processInstrctList(ParseHelper pH);
+int processInstruction(ParseHelper pH);
+int processSet(ParseHelper pH);
+int processPolish(ParseHelper pH);
+
+int checkValidVariable(char c, ParseHelper pH);
+void printSyntaxError(ParseHelper pH, char *message);
 
 
 // TESTING FUNCTIONS
