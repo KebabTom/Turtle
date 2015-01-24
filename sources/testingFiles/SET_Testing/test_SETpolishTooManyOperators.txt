@@ -1,0 +1,12 @@
+{
+FD 40
+SET C := 3 ;
+SET A := 5.2 ;
+SET B := 12
+SET D := C A A * / *;
+
+LT 50
+FD 40
+RT 45
+FD 50
+}

@@ -14,10 +14,12 @@ int main(int argc, char *argv[])
     
     processInput(argc, argv, NO_TESTING);
     
-    parse();
+    int parsedOK = parse();
     
+    if(parsedOK) {
+        printf("Parsed OK\n");
+    }
     
-
 }
 
 

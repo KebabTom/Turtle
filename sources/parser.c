@@ -4,7 +4,7 @@
 struct variable {
     
     char varName;
-    int contents;
+    double contents;
     int assigned;
 } ;
 
@@ -18,14 +18,27 @@ struct parseHelper {
   char token[TOKEN_LENGTH];
   
   double val;
+  char varToSet;
+  int currentVarIndex;
   
   Variable varList[NUMBER_OF_VARIABLES];
   char operators[NUMBER_OF_OPERATORS];
   
   int testing;
+  int interpret;
 } ;
 
+struct valStack {
 
+  int numOfVals;
+  ValNode top;
+} ;
+
+struct valNode {
+
+  double val;
+  ValNode next;
+} ;
 
 
 
@@ -73,6 +86,11 @@ void initialiseParseHelper(char *filePath, int testing)
     pH->operators[3] = '/';
     
     pH->testing = testing;
+    if(testing) {
+        pH->interpret = 0;
+    } else {
+        pH->interpret = 1;
+    }
 
 }
 
@@ -108,133 +126,159 @@ void freeParseHelper()
 // PARSING FUNCTIONS
 ////////////////////
 
-void parse()
+void setUpForParsing()
 {
+    createValStack();
+}
+
+int parse()
+{
+    
+    setUpForParsing();
     ParseHelper pH = getParseHelperPointer(NULL);
     
     getToken(pH);
     if(strcmp(pH->token, "{") != 0) {
-        printSyntaxError(pH, "Syntax error - program should start with a single {");
+        printSyntaxError(pH, "program should start with a single {");
+        return 0;
     } else {
         pH->hangingBraces++;
-        expect(instrctlist);
+        return expect(instrctlist);
     }
-      printf("Syntax ok\n");
-    
-    
+    shutDownParsing();
 }
 
-void getToken(ParseHelper pH)
+void shutDownParsing()
+{
+    freeValStack();
+}
+
+int getToken(ParseHelper pH)
 {
     if(fscanf(pH->tokenFP, "%s", pH->token) != 1) {
         if(fgetc(pH->tokenFP) == EOF) {
-            printSyntaxError(pH, "Syntax error - closing brackets do not match opening brackets");
+            printSyntaxError(pH, "closing brackets do not match opening brackets");
+            return 0;
         }
-        printSyntaxError(pH, "Syntax error - invalid token");
-        exit(1);
+        printSyntaxError(pH, "invalid token");
+        return 0;
     }
-    
+    return 1;
 }
 
 int expect(TokenType tType)
 {
     ParseHelper pH = getParseHelperPointer(NULL);
-    printf("here\n");
-    getToken(pH);
+    
+    if(!getToken(pH)) {
+        return 0;
+    }
+    
     switch(tType) {
         case instrctlist :
-            processInstrctList(pH);
-            break;
+            return processInstrctList(pH);
         case instruction :
-            processInstruction(pH);
-            break;
+            return processInstruction(pH);
         case set :
-            processSet(pH);
-            break;
+            return processSet(pH);
         case polish :
-            processPolish(pH);
-            break;
+            return processPolish(pH);
         default :
-            fprintf(stderr, "incorrect enum passed to expect()\n");
+            fprintf(stderr, "ERROR - incorrect enum passed to expect()\n");
             exit(1);
     }
-    return 1;
 }
 
 int processInstrctList(ParseHelper pH)
 {
     if(strcmp(pH->token, "{") == 0 ) {
         pH->hangingBraces++;
-        expect(instrctlist);
-        return 1;
+        return expect(instrctlist);
     }
     if(strcmp(pH->token, "FD") == 0 || strcmp(pH->token, "LT") == 0 || strcmp(pH->token, "RT") == 0) {
-        expect(instruction);
-        return 1;
+        return expect(instruction);
     }
     if(strcmp(pH->token, "SET") == 0) {
-        expect(set);
-        return 1;
+        return expect(set);
     }
     if(strcmp(pH->token, "}") == 0) {
         pH->hangingBraces--;
         if(pH->hangingBraces == 0) {
+            
             char c;
             while((c = fgetc(pH->tokenFP) ) != EOF) {
                 if(c != ' ' && c != '\n') {
-                    printSyntaxError(pH, "Syntax error - additional input detected. Are you missing a closing brace?");
+                    printSyntaxError(pH, "additional input detected. Are you missing a closing brace?");
                     return 0;
                 }
             }
+            return 1;
         } else {
-            expect(instrctlist);
+            return expect(instrctlist);
         }
-        return 1;
     }
     
-    printSyntaxError(pH, "Syntax error - Invalid instruction");
+    printSyntaxError(pH, "Invalid instruction");
     return 0;
 }
 
 int processInstruction(ParseHelper pH)
 {
-    char *remainder;
-    pH->val = strtod(pH->token, &remainder);
-    if(remainder[0] != '\0') {
-        printSyntaxError(pH, "Syntax error - expecting number following instruction");
+    if(!checkForNumber(pH)) {
+        printSyntaxError(pH, "expecting number following instruction");
         return 0;
     } else {
-        expect(instrctlist);
-        return 1;
+        return expect(instrctlist);
     }
 }
 
 int processSet(ParseHelper pH)
 {
     if(strlen(pH->token) != 1) {
-        printSyntaxError(pH, "Syntax error - SET should be followed by a single variable");
+        printSyntaxError(pH, "SET should be followed by a single variable");
         return 0;
     }
     
     if(!checkValidVariable(pH->token[0], pH) ) {
-        printSyntaxError(pH, "Syntax error - SET should be followed by a single variable from A-Z");
+        printSyntaxError(pH, "SET should be followed by a single variable from A-Z");
         return 0;
     }
     
+    pH->varToSet = pH->token[0];
     getToken(pH);
+    
     if(strcmp(pH->token, ":=") != 0) {
-        printSyntaxError(pH, "Syntax error - all SET commands should be followed by variable and ':='");
+        printSyntaxError(pH, "all SET commands should be followed by variable and ':='");
         return 0;
     }
-    expext(polish);
+    return expect(polish);
     
-    return 1;
 }
 
 int processPolish(ParseHelper pH)
 {
-
-
+    if(checkForNumber(pH)) {
+        pushToValStack(pH->val);
+        return expect(polish);
+    }
+    // if not a number, should be a variable or operator
+    if(strlen(pH->token) != 1) {
+        printSyntaxError(pH, "all reverse polish operators/variables should only be 1 character long separated by spaces");
+        return 0;
+    }
+    if(checkValidVariable(pH->token[0], pH) ) {
+        if(!checkVariableAssigned(pH->token[0], pH)) {
+            printSyntaxError(pH, "attempted mathematical operation on undefined variable");
+            return 0;
+        } else {
+            double d = pH->varList[pH->currentVarIndex]->contents;
+            pushToValStack(d);
+            return expect(polish);
+        }
+    }
+    
+            
+    
     return 1;
 }
 
@@ -245,6 +289,7 @@ int checkValidVariable(char c, ParseHelper pH)
 {
     for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
         if(pH->varList[i]->varName == c) {
+            pH->currentVarIndex = i;
             return 1;
         }
     }
@@ -252,15 +297,129 @@ int checkValidVariable(char c, ParseHelper pH)
     return 0;
 }
 
+int checkForNumber(ParseHelper pH)
+{
+    char *remainder;
+    pH->val = strtod(pH->token, &remainder);
+    if(remainder[0] != '\0') {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+int checkVariableAssigned(char c, ParseHelper pH)
+{
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        if(pH->varList[i]->varName == c) {
+            if(pH->varList[i]->assigned == 1) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 void printSyntaxError(ParseHelper pH, char *message)
 {
     if(!pH->testing) {
-        fprintf(stderr, "%s\nError at: %s\n", message, pH->token);
+        fprintf(stderr, "Syntax error - %s\nError at: %s\n", message, pH->token);
         exit(1);
     }
 }
 
 
+
+///////////////////////////////////////////////////////////////////
+// VAL STACK FUNCTIONS
+/////////////////////////
+
+void createValStack()
+{
+    ValStack newStack = (ValStack) malloc(sizeof(struct valStack));
+    if(newStack == NULL) {
+        fprintf(stderr, "ERROR - unable to malloc space for valstack in createValStack()\n");
+        exit(1);
+    }
+    
+    newStack->top = NULL;
+    newStack->numOfVals = 0;
+    getValStackPointer(newStack);
+}
+
+ValStack getValStackPointer(ValStack newStack)
+{
+    static ValStack vStack;
+    if(newStack != NULL) {
+        vStack = newStack;
+    }
+    
+    return vStack;
+}
+
+void pushToValStack(double val)
+{
+    ValStack vStack = getValStackPointer(NULL);
+    
+    ValNode vN = newValNode();
+    vN->val = val;
+    vN->next = vStack->top;
+    vStack->numOfVals++;
+    vStack->top = vN;
+}
+
+
+ValNode newValNode()
+{
+    ValNode newNode = (ValNode) malloc(sizeof(struct valNode));
+    if(newNode == NULL) {
+        fprintf(stderr, "ERROR - Unable to malloc space for val node in newValNode()\n");
+        exit(1);
+    }
+    
+    newNode->next = NULL;
+    return newNode;
+}
+
+int popFromValStack(double *poppedVal)
+{
+    ValStack vStack = getValStackPointer(NULL);
+    
+    if(vStack->numOfVals > 0) {
+        *poppedVal = vStack->top->val;
+        ValNode tmp = vStack->top;
+        vStack->top = vStack->top->next;
+        free(tmp);
+        vStack->numOfVals--;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+    
+    
+void freeValStack()
+{
+    ValStack vStack = getValStackPointer(NULL);
+    
+    for(int i = 0; i < vStack->numOfVals; i++) {
+        ValNode tmp = vStack->top;
+        vStack->top = vStack->top->next;
+        free(tmp);
+    }
+    
+    free(vStack);
+}
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////
+// WHITE BOX TESTING FUNCTIONS
+//////////////////////////////
 void runParserWhiteBoxTests()
 {
 	  sput_start_testing();
@@ -269,6 +428,14 @@ void runParserWhiteBoxTests()
 	  
 	  sput_enter_suite("testHelperInitialisation(): Checking Parse Helper structure is properly initialised");
     sput_run_test(testHelperInitialisation);
+    sput_leave_suite();
+    
+    sput_enter_suite("testSyntaxErrors(): Checking test scripts with missing brackets etc");
+    sput_run_test(testSyntaxErrors);
+    sput_leave_suite();
+    
+    sput_enter_suite("testSetCommand(): Checking test scripts using the SET command");
+    sput_run_test(testSetCommand);
     sput_leave_suite();
     
     sput_finish_testing();
@@ -287,10 +454,72 @@ void testHelperInitialisation()
     sput_fail_unless(pH->lineNumber == 1, "Parser Helper initialises line number to 1");
 }
 
+void testSyntaxErrors()
+{
+    createParseHelper();
+    initialiseParseHelper("testingFiles/test_simpleParse.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed simple RT, LT and FD commands ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/test_nestedBraces.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed nested braces ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/test_noClosingBrace.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse text with no closing brace");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/test_noOpeningBrace.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse text with no opening brace");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/test_textAfterClosingBrace.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse text when there is remaining text after last brace");
+    freeParseHelper();
+}
 
 
-
-
+void testSetCommand()
+{
+    createParseHelper();
+    initialiseParseHelper("testingFiles/SET_Testing/test_simpleSET.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed simple SET commands ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/SET_Testing/test_SETmultiple.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed multiple SET commands to same variable ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolish.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed SET commands with reverse polish maths ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolishUndefined.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse command performing reverse polish on undefined variable");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/SET_Testing/test_SETlongPolish.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed SET commands using long Polish expression ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolishTooManyVariables.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many variables) reverse polish equation");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many operators) reverse polish equation");
+    freeParseHelper();
+}
 
 
 
