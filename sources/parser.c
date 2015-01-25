@@ -132,17 +132,10 @@ int parse()
     setUpForParsing();
     ParseHelper pH = getParseHelperPointer(NULL);
     
-    getToken(pH);
-    if(strcmp(pH->token, "{") != 0) {
-        return syntaxError(pH, "program should start with a single {");
-    } else {
-        pH->hangingBraces++;
-        if(!getToken(pH)) {
-            return 0;
-        }
-        return processInstrctList(pH);
-    }
+    int parsed = processMain(pH);
     shutDownParsing();
+    
+    return parsed;
 }
 
 void shutDownParsing()
@@ -162,14 +155,12 @@ int getToken(ParseHelper pH)
     return 1;
 }
 
-int expect(TokenType tType)
+int chkToken(TokenType tType)
 {
     ParseHelper pH = getParseHelperPointer(NULL);
     
     
     switch(tType) {
-        case instrctlist :
-            return processInstrctList(pH);
         case instruction :
             if(strcmp(pH->token, "FD") == 0 || strcmp(pH->token, "LT") == 0 || strcmp(pH->token, "RT") == 0 || strcmp(pH->token, "SET") == 0 || strcmp(pH->token, "DO") == 0) {
                 return 1;
@@ -214,41 +205,41 @@ int expect(TokenType tType)
         case op :
             return checkValidOperator(pH->token[0], pH);
         case from :
-            if(strcmp(pH->token, "FROM") != 0) {
-                return 0;
+            if(strcmp(pH->token, "FROM") == 0) {
+                return 1;
             }
-            return 1;
+            return 0;
         case to :
-            if(strcmp(pH->token, "TO") != 0) {
-                return 0;
+            if(strcmp(pH->token, "TO") == 0) {
+                return 1;
             }
-            return 1;
+            return 0;
         case openBrace :
             if(strcmp(pH->token, "{") == 0 ) {
                 return 1;
             }
             return 0;
-            
+        case closeBrace :
+            if(strcmp(pH->token, "}") == 0) {
+                return 1;
+            }
+            return 0;
         default :
-            fprintf(stderr, "ERROR - incorrect enum passed to expect()\n");
+            fprintf(stderr, "ERROR - incorrect enum passed to chkToken()\n");
             exit(1);
     }
 }
 
-int processInstrctList(ParseHelper pH)
+int processMain(ParseHelper pH)
 {
-    if(expect(openBrace)) {
-        pH->hangingBraces++;
-        getToken(pH);
-        return processInstrctList(pH);
-    }
+    getToken(pH);
     
-    if(expect(instruction)){
-        return processInstruction(pH);
+    if(!chkToken(openBrace) ) {
+        return syntaxError(pH, "all code sections should begin with an opening brace");
     }
+    pH->hangingBraces++;
     
-    if(strcmp(pH->token, "}") == 0) {
-        pH->hangingBraces--;
+    if(processInstrctList(pH) ) {
         if(pH->hangingBraces == 0) {
             
             char c;
@@ -259,11 +250,31 @@ int processInstrctList(ParseHelper pH)
             }
             return 1;
         } else {
-            getToken(pH);
-            return processInstrctList(pH);
+            printf("Braces: %d\n", pH->hangingBraces);
+            return syntaxError(pH, "closing braces do not match opening braces. Are you missing a closing brace?");
+        }
+    } else {
+        return 0;
+    }
+}
+     
+
+int processInstrctList(ParseHelper pH)
+{
+    getToken(pH);
+    
+    if(chkToken(instruction)){
+        if(!processInstruction(pH)) {
+            return 0;
+        }
+        return processInstrctList(pH);
+    } else {
+    
+        if(chkToken(closeBrace)) {
+            pH->hangingBraces--;
+            return 1;
         }
     }
-    
     return syntaxError(pH, "Invalid instruction");
 }
 
@@ -274,21 +285,21 @@ int processInstruction(ParseHelper pH)
         if(!processVarNum(pH) ) {
             return 0;
         }
-        return processInstrctList(pH);
+        return 1;
     }
     
     if(strcmp(pH->token, "LT") == 0) {
         if(!processVarNum(pH) ) {
             return 0;
         }
-        return processInstrctList(pH);
+        return 1;
     }
     
     if(strcmp(pH->token, "RT") == 0) {
         if(!processVarNum(pH) ) {
             return 0;
         }
-        return processInstrctList(pH);
+        return 1;
     }
     
     if(strcmp(pH->token, "SET") == 0) {
@@ -306,13 +317,8 @@ int processInstruction(ParseHelper pH)
 
 int processVarNum(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
-    if(expect(varnum) ) {
-        if(!getToken(pH)) {
-            return 0;
-        }
+    getToken(pH);
+    if(chkToken(varnum) ) {
         return 1;
     }
     return 0;
@@ -323,25 +329,21 @@ int processVarNum(ParseHelper pH)
 
 int processSet(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
-    if(!expect(var)) {
+    getToken(pH);
+    if(!chkToken(var)) {
         return 0;
     }
     
     pH->varToSet = pH->token[0];
     
-    if(!getToken(pH)) {
-        return 0;
-    }
-    if(!expect(equals)) {
+    getToken(pH);
+    if(!chkToken(equals)) {
         return 0;
     }
     if(!processPolish(pH)) {
         return 0;
     }
-    return processInstrctList(pH);
+    return 1;
     
 }
 
@@ -349,7 +351,7 @@ int processPolish(ParseHelper pH)
 {
     getToken(pH);
     
-    if(expect(val) ) {
+    if(chkToken(val) ) {
         pushToValStack(pH->val);
         return processPolish(pH);
     }
@@ -360,17 +362,17 @@ int processPolish(ParseHelper pH)
         return syntaxError(pH, "all reverse polish operators/variables should only be 1 character long separated by spaces");
     }
     
-    if(expect(varnum)) {
+    if(chkToken(varnum)) {
         double d = pH->varList[pH->currentVarIndex]->contents;
         pushToValStack(d);
         return processPolish(pH);
     }
     
-    if(expect(semicolon)) {
+    if(chkToken(semicolon)) {
         return finishPolish(pH);
     }
     
-    if(expect(op)) {
+    if(chkToken(op)) {
         return processOperator(pH);
     }
     
@@ -386,9 +388,7 @@ int processOperator(ParseHelper pH)
         return syntaxError(pH, "too few variables/constants for operators in reverse polish expression");
     }
     
-    if(pH->interpret) {
-        pH->val = doMaths(a, b, pH->currentOperation);
-    }
+    pH->val = doMaths(a, b, pH->currentOperation);
     
     pushToValStack(pH->val);
     return processPolish(pH);
@@ -399,12 +399,8 @@ int finishPolish(ParseHelper pH)
     popFromValStack(&pH->val);
     assignValToCurrentVariable(pH);
     if(getNumberOfValsOnStack() != 0) {
-        printf("Vals on stack: %d\n", getNumberOfValsOnStack());
-        return syntaxError(pH, "more input than required operators in reverse polish expression");
+        return syntaxError(pH, "more input than required operators in reverse polish expression\n");
     } else {
-        if(!getToken(pH)) {
-            return 0;
-        }
         return 1;
     }
 }
@@ -412,39 +408,43 @@ int finishPolish(ParseHelper pH)
 int processDo(ParseHelper pH)
 {
     getToken(pH);
-    if(!expect(var)) {
+    if(!chkToken(var)) {
         return syntaxError(pH, "invalid variable following DO command");
     }
     char loopVariable = pH->token[0];
     
     getToken(pH);
-    if(!expect(from)) {
+    if(!chkToken(from)) {
         return syntaxError(pH, "missing FROM in DO command");
     }
     
     getToken(pH);
-    if(!expect(varnum)) {
+    if(!chkToken(varnum)) {
         return syntaxError(pH, "invalid variable/number following FROM in DO command");
     }
     double varVal = 1.0;
     assignValToVariable(pH, loopVariable, varVal);
     
     getToken(pH);
-    if(!expect(to)) {
+    if(!chkToken(to)) {
         return syntaxError(pH, "missing TO in DO command");
     }
     
     getToken(pH);
-    if(!expect(varnum)) {
+    if(!chkToken(varnum)) {
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
     
     getToken(pH);
-    if(!expect(openBrace)) {
+    if(!chkToken(openBrace)) {
         return syntaxError(pH, "missing opening brace following DO command");
     }
+    pH->hangingBraces++;
     
-    return processInstrctList(pH);
+    if(!processInstrctList(pH)) {
+        return syntaxError(pH, "DO error");
+    }
+    return 1;
 
 }
 
@@ -544,6 +544,27 @@ int syntaxError(ParseHelper pH, char *message)
     return 0;
 }
 
+
+///////////////////////////////////////////////////////////////////
+// VARIABLE HANDLING FUNCTIONS
+//////////////////////////////
+
+double doMaths(double a, double b, mathSymbol op)
+{
+    switch(op) {
+        case add :
+            return a+b;
+        case subtract :
+            return a-b;
+        case multiply :
+            return a*b;
+        case divide :
+            return a/b;
+        default :
+            fprintf(stderr, "ERROR - invalid maths operator passed to doMaths()\n");
+            exit(1);
+    }
+}
 
 ///////////////////////////////////////////////////////////////////
 // VAL STACK FUNCTIONS
@@ -690,11 +711,6 @@ void testSyntaxErrors()
     createParseHelper();
     initialiseParseHelper("testingFiles/test_simpleParse.txt", TESTING);
     sput_fail_unless(parse() == 1, "Parsed simple RT, LT and FD commands ok");
-    freeParseHelper();
-    
-    createParseHelper();
-    initialiseParseHelper("testingFiles/test_nestedBraces.txt", TESTING);
-    sput_fail_unless(parse() == 1, "Parsed nested braces ok");
     freeParseHelper();
     
     createParseHelper();

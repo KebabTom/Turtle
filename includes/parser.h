@@ -15,10 +15,14 @@ typedef struct valNode *ValNode;
 
 enum tokenType {
   instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
-  from, to, openBrace
+  from, to, openBrace, closeBrace
 } ;
 typedef enum tokenType TokenType;
 
+enum mathSymbol {
+  add, subtract, divide, multiply
+} ;
+typedef enum mathSymbol mathSymbol;
 
 // PARSE HELPER FUNCTIONS
 void createParseHelper();
@@ -32,7 +36,8 @@ void setUpForParsing();
 int  parse();
 void shutDownParsing();
 int  getToken(ParseHelper pH);
-int  expect(TokenType tType);
+int  chkToken(TokenType tType);
+int  processMain(ParseHelper pH);
 int  processInstrctList(ParseHelper pH);
 int  processInstruction(ParseHelper pH);
 int  processVarNum(ParseHelper pH);
@@ -49,6 +54,8 @@ int checkValidOperator(char c, ParseHelper pH);
 void assignValToCurrentVariable(ParseHelper pH);
 void assignValToVariable(ParseHelper pH, char varToSet, double val);
 int syntaxError(ParseHelper pH, char *message);
+
+double doMaths(double a, double b, mathSymbol op);
 
 // VAL STACK FUNCTIONS
 void createValStack();

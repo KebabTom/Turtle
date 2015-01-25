@@ -1,10 +1,5 @@
 #include "../includes/interpreter.h"
 
-double doMaths(double a, double b, mathSymbol op)
-{
-
-    return 1;
-}
 
 
 
