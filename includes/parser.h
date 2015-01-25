@@ -29,6 +29,7 @@ void createParseHelper();
 ParseHelper getParseHelperPointer(ParseHelper pH);
 void initialiseParseHelper(char *filePath, int testing);
 void initialiseVariableList(ParseHelper pH);
+void readInTokensFromFile();
 void freeParseHelper();
 
 // PARSING FUNCTIONS
@@ -53,6 +54,7 @@ int checkVariableAssigned(char c, ParseHelper pH);
 int checkValidOperator(char c, ParseHelper pH);
 void assignValToCurrentVariable(ParseHelper pH);
 void assignValToVariable(ParseHelper pH, char varToSet, double val);
+double getTokenVal(ParseHelper pH);
 int syntaxError(ParseHelper pH, char *message);
 
 double doMaths(double a, double b, mathSymbol op);

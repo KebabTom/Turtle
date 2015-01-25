@@ -11,11 +11,13 @@ struct variable {
 struct parseHelper {
 
   FILE *tokenFP;
-  FILE *lookAheadFP;
   
   int lineNumber;
   int hangingBraces;
+  
+  int numberOfTokens;
   char token[TOKEN_LENGTH];
+  char **tokenArray;
   
   double val;
   char varToSet;
@@ -73,10 +75,10 @@ void initialiseParseHelper(char *filePath, int testing)
     ParseHelper pH = getParseHelperPointer(NULL);
     
     pH->tokenFP = fopen(filePath, "r");
-    pH->lookAheadFP = fopen(filePath, "r");
     
     pH->lineNumber = 1;
     pH->hangingBraces = 0;
+    pH->numberOfTokens = 0;
     
     initialiseVariableList(pH);
     
@@ -86,6 +88,8 @@ void initialiseParseHelper(char *filePath, int testing)
     } else {
         pH->interpret = 1;
     }
+    
+    pH->tokenArray = NULL;
 
 }
 
@@ -101,6 +105,7 @@ void initialiseVariableList(ParseHelper pH)
         pH->varList[i]->assigned = 0;
     }
 }
+    
 
 void freeParseHelper()
 {
@@ -111,7 +116,11 @@ void freeParseHelper()
     }
     
     fclose(pH->tokenFP);
-    fclose(pH->lookAheadFP);
+    
+    for(int i = 0; i < pH->numberOfTokens; i++) {
+        free(pH->tokenArray[i]);
+    }
+    free(pH->tokenArray);
     
     free(pH);
 }
@@ -125,6 +134,10 @@ void setUpForParsing()
 {
     createValStack();
 }
+
+    
+    
+    
 
 int parse()
 {
@@ -145,11 +158,18 @@ void shutDownParsing()
 
 int getToken(ParseHelper pH)
 {
+    
     if(fscanf(pH->tokenFP, "%s", pH->token) != 1) {
         if(fgetc(pH->tokenFP) == EOF) {
             return syntaxError(pH, "closing braces do not match opening braces. Are you missing a closing brace?");
         }
         return syntaxError(pH, "invalid token");
+    } else {
+        pH->numberOfTokens++;
+        pH->tokenArray = (char**)realloc(pH->tokenArray,pH->numberOfTokens * sizeof(char*));
+        pH->tokenArray[pH->numberOfTokens-1] = (char*)calloc(TOKEN_LENGTH, sizeof(char));
+        
+        strcpy(pH->tokenArray[pH->numberOfTokens-1], pH->token);
     }
     //printf("%s\n", pH->token);
     return 1;
@@ -233,6 +253,7 @@ int chkToken(TokenType tType)
 int processMain(ParseHelper pH)
 {
     getToken(pH);
+    
     
     if(!chkToken(openBrace) ) {
         return syntaxError(pH, "all code sections should begin with an opening brace");
@@ -334,7 +355,7 @@ int processSet(ParseHelper pH)
         return 0;
     }
     
-    pH->varToSet = pH->token[0];
+    char varToSet = pH->token[0];
     
     getToken(pH);
     if(!chkToken(equals)) {
@@ -343,6 +364,7 @@ int processSet(ParseHelper pH)
     if(!processPolish(pH)) {
         return 0;
     }
+    assignValToVariable(pH, varToSet, pH->val);
     return 1;
     
 }
@@ -353,7 +375,7 @@ int processPolish(ParseHelper pH)
     
     if(chkToken(val) ) {
         pushToValStack(pH->val);
-        return processPolish(pH);
+        return processPolish(pH);;
     }
     
     // if not a number, should be a variable or operator
@@ -363,8 +385,15 @@ int processPolish(ParseHelper pH)
     }
     
     if(chkToken(varnum)) {
-        double d = pH->varList[pH->currentVarIndex]->contents;
+        double d = getTokenVal(pH);
         pushToValStack(d);
+        return processPolish(pH);
+    }
+    
+    if(chkToken(op)) {
+        if(!processOperator(pH) ) {
+            return 0;
+        }
         return processPolish(pH);
     }
     
@@ -372,12 +401,7 @@ int processPolish(ParseHelper pH)
         return finishPolish(pH);
     }
     
-    if(chkToken(op)) {
-        return processOperator(pH);
-    }
-    
     return syntaxError(pH, "reverse polish expression not completed properly");
-    
 }
 
 
@@ -391,13 +415,12 @@ int processOperator(ParseHelper pH)
     pH->val = doMaths(a, b, pH->currentOperation);
     
     pushToValStack(pH->val);
-    return processPolish(pH);
+    return 1;
 }
 
 int finishPolish(ParseHelper pH)
 {
     popFromValStack(&pH->val);
-    assignValToCurrentVariable(pH);
     if(getNumberOfValsOnStack() != 0) {
         return syntaxError(pH, "more input than required operators in reverse polish expression\n");
     } else {
@@ -422,8 +445,9 @@ int processDo(ParseHelper pH)
     if(!chkToken(varnum)) {
         return syntaxError(pH, "invalid variable/number following FROM in DO command");
     }
-    double varVal = 1.0;
-    assignValToVariable(pH, loopVariable, varVal);
+    
+    int loopVal = (int) getTokenVal(pH);
+    assignValToVariable(pH, loopVariable, loopVal);
     
     getToken(pH);
     if(!chkToken(to)) {
@@ -434,6 +458,8 @@ int processDo(ParseHelper pH)
     if(!chkToken(varnum)) {
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
+    
+    int loopEndingVal = (int) getTokenVal(pH);
     
     getToken(pH);
     if(!chkToken(openBrace)) {
@@ -533,7 +559,22 @@ void assignValToVariable(ParseHelper pH, char varToSet, double val)
         exit(1);
     }
 }
-            
+
+double getTokenVal(ParseHelper pH)
+{
+    if(checkForNumber(pH) ) {
+        return pH->val;
+    }
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        if(pH->varList[i]->varName == pH->token[0]) {
+            return pH->varList[i]->contents;
+        }
+    }
+    
+    fprintf(stderr, "ERROR - attempted to extract contents of variable not in varList in getTokenVal()\n");
+    exit(1);
+}
+    
 
 
 int syntaxError(ParseHelper pH, char *message)
@@ -702,8 +743,9 @@ void testHelperInitialisation()
     initialiseParseHelper("testingFiles/parserTesting.txt", TESTING);
     ParseHelper pH = getParseHelperPointer(NULL);
     
-    sput_fail_unless(pH->tokenFP != NULL && pH->lookAheadFP != NULL, "Parser Helper sets token and lookahead file pointers on initialisation");
+    sput_fail_unless(pH->tokenFP != NULL, "Parser Helper sets token file pointer on initialisation");
     sput_fail_unless(pH->lineNumber == 1, "Parser Helper initialises line number to 1");
+    freeParseHelper();
 }
 
 void testSyntaxErrors()
