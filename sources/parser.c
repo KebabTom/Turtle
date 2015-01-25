@@ -506,6 +506,10 @@ void runParserWhiteBoxTests()
     sput_run_test(testSetCommand);
     sput_leave_suite();
     
+    sput_enter_suite("testValStack(): Testing pushing and popping from Val Stack");
+    sput_run_test(testValStack);
+    sput_leave_suite();
+    
     sput_finish_testing();
 
 }
@@ -589,7 +593,33 @@ void testSetCommand()
     freeParseHelper();
 }
 
-
+void testValStack()
+{
+    createValStack();
+    pushToValStack(3);
+    pushToValStack(12.4);
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 2, "After pushing two values to stack, number of items in stack is 2");
+    freeValStack();
+    
+    createValStack();
+    pushToValStack(25);
+    pushToValStack(13);
+    pushToValStack(20);
+    double d;
+    sput_fail_unless(popFromValStack(&d) == 1 && (int) d == 20, "Stack successfully pops value from stack");
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 2, "After pushing 3 values and popping 1, number of items in stack is 2");
+    
+    popFromValStack(&d);
+    popFromValStack(&d);
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 0, "After pushing 3 values and popping 3, number of items in stack is 0");
+    sput_fail_unless((int) d == 25, "Successfully pops 3 values from stack");
+    
+    sput_fail_unless(popFromValStack(&d) == 0, "Does not alow pop from empty stack");
+    sput_fail_unless((int) d == 25, "Target value unchanged after pop from empty stack");
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 0, "Items in stack is still 0 after pop from empty stack");
+    freeValStack();
+}
+    
 
 
 
