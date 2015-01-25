@@ -7,7 +7,7 @@ typedef enum mathSymbol {
   add, subtract, divide, multiply
 } mathSymbol;
 
-int doMaths(int a, int b, mathSymbol op);
+double doMaths(double a, double b, mathSymbol op);
 
 
 void runInterpreterWhiteBoxTests();

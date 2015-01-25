@@ -20,9 +20,9 @@ struct parseHelper {
   double val;
   char varToSet;
   int currentVarIndex;
+  mathSymbol currentOperation;
   
   Variable varList[NUMBER_OF_VARIABLES];
-  char operators[NUMBER_OF_OPERATORS];
   
   int testing;
   int interpret;
@@ -79,11 +79,6 @@ void initialiseParseHelper(char *filePath, int testing)
     pH->hangingBraces = 0;
     
     initialiseVariableList(pH);
-    
-    pH->operators[0] = '+';
-    pH->operators[1] = '-';
-    pH->operators[2] = '*';
-    pH->operators[3] = '/';
     
     pH->testing = testing;
     if(testing) {
@@ -276,11 +271,49 @@ int processPolish(ParseHelper pH)
             return expect(polish);
         }
     }
+    if(strcmp(pH->token, ";") == 0) {
+        return finishPolish(pH);
+    }
     
-            
+    if(checkValidOperator(pH->token[0], pH) ) {
+        return processOperator(pH);
+    }
     
-    return 1;
+    printSyntaxError(pH, "reverse polish expression not completed properly");
+    return 0;
+    
 }
+
+
+int processOperator(ParseHelper pH)
+{
+    double a, b;
+    if(popFromValStack(&b) == 0 || popFromValStack(&a) == 0) {
+        printSyntaxError(pH, "too few variables/constants for operators in reverse polish expression");
+        return 0;
+    }
+    
+    if(pH->interpret) {
+        pH->val = doMaths(a, b, pH->currentOperation);
+    }
+    
+    pushToValStack(pH->val);
+    return expect(polish);
+}
+
+int finishPolish(ParseHelper pH)
+{
+    popFromValStack(&pH->val);
+    assignValToCurrentVariable(pH);
+    if(getNumberOfValsOnStack() != 0) {
+        printf("Vals on stack: %d\n", getNumberOfValsOnStack());
+        printSyntaxError(pH, "more input than required operators in reverse polish expression");
+        return 0;
+    } else {
+        return expect(instrctlist);
+    }
+}
+
 
 /*
 returns 1 if passed character is within list of potential variables. If not, returns 0.
@@ -320,6 +353,38 @@ int checkVariableAssigned(char c, ParseHelper pH)
     return 0;
 }
 
+int checkValidOperator(char c, ParseHelper pH)
+{
+    switch(c) {
+        case '+' :
+            pH->currentOperation = add;
+            return 1;
+        case '-' :
+            pH->currentOperation = subtract;
+            return 1;
+        case '/' :
+            pH->currentOperation = divide;
+            return 1;
+        case '*' :
+            pH->currentOperation = multiply;
+            return 1;
+        default :
+            return 0;
+    }
+}
+
+
+void assignValToCurrentVariable(ParseHelper pH)
+{
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        if(pH->varList[i]->varName == pH->varToSet) {
+            pH->varList[i]->contents = pH->val;
+            pH->varList[i]->assigned = 1;
+        }
+    }
+}
+
+
 void printSyntaxError(ParseHelper pH, char *message)
 {
     if(!pH->testing) {
@@ -327,7 +392,6 @@ void printSyntaxError(ParseHelper pH, char *message)
         exit(1);
     }
 }
-
 
 
 ///////////////////////////////////////////////////////////////////
@@ -396,7 +460,11 @@ int popFromValStack(double *poppedVal)
         return 0;
     }
 }
-    
+
+int getNumberOfValsOnStack()
+{
+    return getValStackPointer(NULL)->numOfVals;
+}
     
 void freeValStack()
 {

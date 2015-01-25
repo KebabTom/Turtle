@@ -1,6 +1,6 @@
 #include "../includes/interpreter.h"
 
-int doMaths(int a, int b, mathSymbol op)
+double doMaths(double a, double b, mathSymbol op)
 {
 
     return 1;

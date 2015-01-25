@@ -1,7 +1,7 @@
 {
 FD 40
 SET C := 3 ;
-SET B := 78.4
+SET B := 78.4 ;
 SET A := 5.2 ;
 SET D := B A B C A * / + - ;
 LT 50

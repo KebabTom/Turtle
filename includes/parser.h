@@ -2,7 +2,6 @@
 
 #define TOKEN_LENGTH 100
 #define NUMBER_OF_VARIABLES 26
-#define NUMBER_OF_OPERATORS 4
 
 #define TESTING 1
 #define NO_TESTING 0
@@ -27,7 +26,7 @@ void initialiseParseHelper(char *filePath, int testing);
 void initialiseVariableList(ParseHelper pH);
 void freeParseHelper();
 
-// PARSiNG FUNCTIONS
+// PARSING FUNCTIONS
 void setUpForParsing();
 int  parse();
 void shutDownParsing();
@@ -37,10 +36,13 @@ int  processInstrctList(ParseHelper pH);
 int  processInstruction(ParseHelper pH);
 int  processSet(ParseHelper pH);
 int  processPolish(ParseHelper pH);
+int processOperator(ParseHelper pH);
+int  finishPolish(ParseHelper pH);
 
 int checkValidVariable(char c, ParseHelper pH);
 int checkForNumber(ParseHelper pH);
 int checkVariableAssigned(char c, ParseHelper pH);
+int checkValidOperator(char c, ParseHelper pH);
 void printSyntaxError(ParseHelper pH, char *message);
 
 // VAL STACK FUNCTIONS
@@ -49,6 +51,8 @@ ValStack getValStackPointer(ValStack newStack);
 void pushToValStack(double val);
 ValNode newValNode();
 int popFromValStack(double *poppedVal);
+int getNumberOfValsOnStack();
+void assignValToCurrentVariable(ParseHelper pH);
 void freeValStack();
 
 // TESTING FUNCTIONS
