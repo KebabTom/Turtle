@@ -14,7 +14,7 @@ typedef struct valNode *ValNode;
 
 
 enum tokenType {
-  instrctlist, instruction, fd, lt, rt, varnum, set, polish, op
+  instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val
 } ;
 typedef enum tokenType TokenType;
 
