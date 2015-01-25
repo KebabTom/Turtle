@@ -167,7 +167,15 @@ int getToken(ParseHelper pH)
     } else {
         pH->numberOfTokens++;
         pH->tokenArray = (char**)realloc(pH->tokenArray,pH->numberOfTokens * sizeof(char*));
+        if(pH->tokenArray == NULL) {
+            fprintf(stderr, "ERROR - realloc failed in getToken()\n");
+            exit(1);
+        }
         pH->tokenArray[pH->numberOfTokens-1] = (char*)calloc(TOKEN_LENGTH, sizeof(char));
+        if(pH->tokenArray[pH->numberOfTokens-1] == NULL) {
+            fprintf(stderr, "ERROR - malloc failed in getToken()\n");
+            exit(1);
+        }
         
         strcpy(pH->tokenArray[pH->numberOfTokens-1], pH->token);
     }
@@ -175,87 +183,45 @@ int getToken(ParseHelper pH)
     return 1;
 }
 
-int chkToken(TokenType tType)
+TokenType whatToken(char *token)
 {
     ParseHelper pH = getParseHelperPointer(NULL);
     
+    if(sameString(token, "FD")) {return instruction;}
+    if(sameString(token, "LT")) {return instruction;}
+    if(sameString(token, "RT")) {return instruction;}
+    if(sameString(token, "SET")) {return instruction;}
+    if(sameString(token, "DO")) {return instruction;}
+    if(sameString(token, "FROM")) {return from;}
+    if(sameString(token, "TO")) {return to;}
+    if(sameString(token, "{")) {return openBrace;}
+    if(sameString(token, "}")) {return closeBrace;}
+    if(sameString(token, ";")) {return semicolon;}
+    if(sameString(token, ":=")) {return equals;}
     
-    switch(tType) {
-        case instruction :
-            if(strcmp(pH->token, "FD") == 0 || strcmp(pH->token, "LT") == 0 || strcmp(pH->token, "RT") == 0 || strcmp(pH->token, "SET") == 0 || strcmp(pH->token, "DO") == 0) {
-                return 1;
-             } else {
-                return 0;
-            }
-        case set :
-            return processSet(pH);
-        case varnum :
-            if(checkForNumber(pH)) {
-                return 1;
+    if(checkValidOperator(token[0], pH) == 1) {return op;}
+    
+    if(strlen(token) == 1) {
+        if(checkValidVariable(token[0], pH)) {
+            if(checkVariableAssigned(token[0], pH)) {
+                return assignedVar;
             } else {
-                if(strlen(pH->token) != 1) {
-                    return syntaxError(pH, "all instructions should be followed by a number or single variable");
-                }
+                return unassignedVar;
             }
-            if(!checkVariableAssigned(pH->token[0], pH) ) {
-                return syntaxError(pH, "attempted to action command on unassigned variable");
-            }
-            return 1;
-        case var :
-            if(strlen(pH->token) != 1) {
-                return syntaxError(pH, "SET should be followed by a single variable");
-            }
-            
-            if(!checkValidVariable(pH->token[0], pH) ) {
-                return syntaxError(pH, "SET should be followed by a single variable from A-Z");
-            }
-            return 1;
-        case equals :
-            if(strcmp(pH->token, ":=") != 0) {
-                return syntaxError(pH, "all SET commands should be followed by variable and ':='");
-            }
-            return 1;
-        case val :
-            return checkForNumber(pH);
-        case semicolon :
-            if(strcmp(pH->token, ";") == 0) {
-                return 1;
-            }
-            return 0;
-        case op :
-            return checkValidOperator(pH->token[0], pH);
-        case from :
-            if(strcmp(pH->token, "FROM") == 0) {
-                return 1;
-            }
-            return 0;
-        case to :
-            if(strcmp(pH->token, "TO") == 0) {
-                return 1;
-            }
-            return 0;
-        case openBrace :
-            if(strcmp(pH->token, "{") == 0 ) {
-                return 1;
-            }
-            return 0;
-        case closeBrace :
-            if(strcmp(pH->token, "}") == 0) {
-                return 1;
-            }
-            return 0;
-        default :
-            fprintf(stderr, "ERROR - incorrect enum passed to chkToken()\n");
-            exit(1);
+        }
     }
+    if(checkForNumber(token, pH)) {return num;}
+    
+    else {return noToken;}
 }
+    
 
 int processMain(ParseHelper pH)
 {
     getToken(pH);
     
     
-    if(!chkToken(openBrace) ) {
+    if(whatToken(pH->token) != openBrace ) {
         return syntaxError(pH, "all code sections should begin with an opening brace");
     }
     pH->hangingBraces++;
@@ -284,14 +250,14 @@ int processInstrctList(ParseHelper pH)
 {
     getToken(pH);
     
-    if(chkToken(instruction)){
+    if(whatToken(pH->token) == instruction){
         if(!processInstruction(pH)) {
             return 0;
         }
         return processInstrctList(pH);
     } else {
     
-        if(chkToken(closeBrace)) {
+        if(whatToken(pH->token) == closeBrace) {
             pH->hangingBraces--;
             return 1;
         }
@@ -339,8 +305,11 @@ int processInstruction(ParseHelper pH)
 int processVarNum(ParseHelper pH)
 {
     getToken(pH);
-    if(chkToken(varnum) ) {
+    if(whatToken(pH->token) == assignedVar || whatToken(pH->token) == num) {
         return 1;
+    }
+    if(whatToken(pH->token) == unassignedVar) {
+        return syntaxError(pH, "attempted to process an unassigned variable");
     }
     return 0;
     
@@ -351,14 +320,14 @@ int processVarNum(ParseHelper pH)
 int processSet(ParseHelper pH)
 {
     getToken(pH);
-    if(!chkToken(var)) {
+    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != unassignedVar) {
         return 0;
     }
     
     char varToSet = pH->token[0];
     
     getToken(pH);
-    if(!chkToken(equals)) {
+    if(whatToken(pH->token) != equals) {
         return 0;
     }
     if(!processPolish(pH)) {
@@ -373,7 +342,7 @@ int processPolish(ParseHelper pH)
 {
     getToken(pH);
     
-    if(chkToken(val) ) {
+    if(whatToken(pH->token) == num) {
         pushToValStack(pH->val);
         return processPolish(pH);;
     }
@@ -384,20 +353,20 @@ int processPolish(ParseHelper pH)
         return syntaxError(pH, "all reverse polish operators/variables should only be 1 character long separated by spaces");
     }
     
-    if(chkToken(varnum)) {
+    if(whatToken(pH->token) == assignedVar || whatToken(pH->token) == num) {
         double d = getTokenVal(pH);
         pushToValStack(d);
         return processPolish(pH);
     }
     
-    if(chkToken(op)) {
+    if(whatToken(pH->token) == op) {
         if(!processOperator(pH) ) {
             return 0;
         }
         return processPolish(pH);
     }
     
-    if(chkToken(semicolon)) {
+    if(whatToken(pH->token) == semicolon) {
         return finishPolish(pH);
     }
     
@@ -431,18 +400,18 @@ int finishPolish(ParseHelper pH)
 int processDo(ParseHelper pH)
 {
     getToken(pH);
-    if(!chkToken(var)) {
+    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != unassignedVar) {
         return syntaxError(pH, "invalid variable following DO command");
     }
     char loopVariable = pH->token[0];
     
     getToken(pH);
-    if(!chkToken(from)) {
+    if(whatToken(pH->token) != from) {
         return syntaxError(pH, "missing FROM in DO command");
     }
     
     getToken(pH);
-    if(!chkToken(varnum)) {
+    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != num) {
         return syntaxError(pH, "invalid variable/number following FROM in DO command");
     }
     
@@ -450,19 +419,19 @@ int processDo(ParseHelper pH)
     assignValToVariable(pH, loopVariable, loopVal);
     
     getToken(pH);
-    if(!chkToken(to)) {
+    if(whatToken(pH->token) != to) {
         return syntaxError(pH, "missing TO in DO command");
     }
     
     getToken(pH);
-    if(!chkToken(varnum)) {
+    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != num) {
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
     
     int loopEndingVal = (int) getTokenVal(pH);
     
     getToken(pH);
-    if(!chkToken(openBrace)) {
+    if(whatToken(pH->token) != openBrace) {
         return syntaxError(pH, "missing opening brace following DO command");
     }
     pH->hangingBraces++;
@@ -489,10 +458,10 @@ int checkValidVariable(char c, ParseHelper pH)
     return 0;
 }
 
-int checkForNumber(ParseHelper pH)
+int checkForNumber( char *token, ParseHelper pH)
 {
     char *remainder;
-    pH->val = strtod(pH->token, &remainder);
+    pH->val = strtod(token, &remainder);
     if(remainder[0] != '\0') {
         return 0;
     } else {
@@ -562,7 +531,7 @@ void assignValToVariable(ParseHelper pH, char varToSet, double val)
 
 double getTokenVal(ParseHelper pH)
 {
-    if(checkForNumber(pH) ) {
+    if(checkForNumber(pH->token, pH) ) {
         return pH->val;
     }
     for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
@@ -575,7 +544,14 @@ double getTokenVal(ParseHelper pH)
     exit(1);
 }
     
-
+int sameString(char *a, char *b)
+{
+    if(strcmp(a,b) == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
 
 int syntaxError(ParseHelper pH, char *message)
 {

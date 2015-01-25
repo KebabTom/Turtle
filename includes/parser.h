@@ -15,7 +15,7 @@ typedef struct valNode *ValNode;
 
 enum tokenType {
   instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
-  from, to, openBrace, closeBrace
+  from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar
 } ;
 typedef enum tokenType TokenType;
 
@@ -37,7 +37,7 @@ void setUpForParsing();
 int  parse();
 void shutDownParsing();
 int  getToken(ParseHelper pH);
-int  chkToken(TokenType tType);
+TokenType whatToken(char *token);
 int  processMain(ParseHelper pH);
 int  processInstrctList(ParseHelper pH);
 int  processInstruction(ParseHelper pH);
@@ -49,12 +49,14 @@ int  finishPolish(ParseHelper pH);
 int  processDo(ParseHelper pH);
 
 int checkValidVariable(char c, ParseHelper pH);
-int checkForNumber(ParseHelper pH);
+int checkForNumber(char *token, ParseHelper pH);
 int checkVariableAssigned(char c, ParseHelper pH);
 int checkValidOperator(char c, ParseHelper pH);
 void assignValToCurrentVariable(ParseHelper pH);
 void assignValToVariable(ParseHelper pH, char varToSet, double val);
 double getTokenVal(ParseHelper pH);
+
+int sameString(char *a, char *b);
 int syntaxError(ParseHelper pH, char *message);
 
 double doMaths(double a, double b, mathSymbol op);
