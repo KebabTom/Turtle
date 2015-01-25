@@ -178,6 +178,8 @@ int expect(TokenType tType)
             return processSet(pH);
         case polish :
             return processPolish(pH);
+        case varnum :
+            return processVarNum(pH);
         default :
             fprintf(stderr, "ERROR - incorrect enum passed to expect()\n");
             exit(1);
@@ -191,11 +193,12 @@ int processInstrctList(ParseHelper pH)
         return expect(instrctlist);
     }
     if(strcmp(pH->token, "FD") == 0 || strcmp(pH->token, "LT") == 0 || strcmp(pH->token, "RT") == 0) {
-        return expect(instruction);
+        return expect(varnum);
     }
     if(strcmp(pH->token, "SET") == 0) {
         return expect(set);
     }
+    
     if(strcmp(pH->token, "}") == 0) {
         pH->hangingBraces--;
         if(pH->hangingBraces == 0) {
@@ -226,6 +229,24 @@ int processInstruction(ParseHelper pH)
         return expect(instrctlist);
     }
 }
+
+int processVarNum(ParseHelper pH)
+{
+    if(!checkForNumber(pH)) {
+        if(strlen(pH->token) != 1) {
+            printSyntaxError(pH, "all instructions should be followed by a number or single variable");
+            return 0;
+        } else {
+            if(!checkVariableAssigned(pH->token[0], pH) ) {
+                printSyntaxError(pH, "attempted to action command on unassigned variable");
+                return 0;
+            }
+       }
+    }
+    return expect(instrctlist);
+}
+            
+        
 
 int processSet(ParseHelper pH)
 {
@@ -502,6 +523,10 @@ void runParserWhiteBoxTests()
     sput_run_test(testSyntaxErrors);
     sput_leave_suite();
     
+    sput_enter_suite("testVarNum(): Checking test scripts with variables and numbers");
+    sput_run_test(testVarNum);
+    sput_leave_suite();
+    
     sput_enter_suite("testSetCommand(): Checking test scripts using the SET command");
     sput_run_test(testSetCommand);
     sput_leave_suite();
@@ -554,6 +579,18 @@ void testSyntaxErrors()
     freeParseHelper();
 }
 
+void testVarNum()
+{
+    createParseHelper();
+    initialiseParseHelper("testingFiles/VarNum_Testing/test_simpleVarNum.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed simple access of set variable OK");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/VarNum_Testing/test_uninitialisedVarNum.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse text when variable is used uninitialised");
+    freeParseHelper();
+}
 
 void testSetCommand()
 {

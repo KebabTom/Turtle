@@ -34,9 +34,10 @@ int  getToken(ParseHelper pH);
 int  expect(TokenType tType);
 int  processInstrctList(ParseHelper pH);
 int  processInstruction(ParseHelper pH);
+int  processVarNum(ParseHelper pH);
 int  processSet(ParseHelper pH);
 int  processPolish(ParseHelper pH);
-int processOperator(ParseHelper pH);
+int  processOperator(ParseHelper pH);
 int  finishPolish(ParseHelper pH);
 
 int checkValidVariable(char c, ParseHelper pH);
@@ -59,5 +60,6 @@ void freeValStack();
 void runParserWhiteBoxTests();
 void testHelperInitialisation();
 void testSyntaxErrors();
+void testVarNum();
 void testSetCommand();
 void testValStack();

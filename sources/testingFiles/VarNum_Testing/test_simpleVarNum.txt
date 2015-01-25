@@ -1,0 +1,7 @@
+{
+FD 50
+SET A := 4 ;
+RT A
+FD A
+LT A
+}
