@@ -74,6 +74,13 @@ void initialiseSDL()
 
 }
 
+void shutDownDisplay()
+{
+    SDL_Simplewin sw = getSDL_SimplewinPointer(NULL);
+    
+    free(sw);
+}
+
 
 //  SDL DRAWING FUNCTIONS  ////////////////////////////////////////////////////////////
 /*...................................................................................*/
@@ -98,15 +105,16 @@ void drawBlackBackground()
 
 void drawLine(int xFrom, int yFrom, int xTo, int yTo)
 {
-    SDL_Delay(MILLISECOND_DELAY);
-    
     SDL_Simplewin sw = getSDL_SimplewinPointer(NULL);
-    
-    SDL_RenderDrawLine(sw->renderer, xFrom, yFrom, xTo, yTo);
-    SDL_RenderPresent(sw->renderer);
-    SDL_UpdateWindowSurface(sw->win);
-    
-    Neill_SDL_Events(sw);
+    if(!sw->finished) {
+        SDL_Delay(MILLISECOND_DELAY);
+        
+        SDL_RenderDrawLine(sw->renderer, xFrom, yFrom, xTo, yTo);
+        SDL_RenderPresent(sw->renderer);
+        SDL_UpdateWindowSurface(sw->win);
+        
+        Neill_SDL_Events(sw);
+    }
 }
 
 // Trivial wrapper to avoid complexities of renderer & alpha channels
@@ -123,16 +131,20 @@ void Neill_SDL_Events(SDL_Simplewin sw)
     SDL_Event event;
     while(SDL_PollEvent(&event)) 
     {      
-         switch (event.type){
-             case SDL_QUIT:
+         if(event.type == SDL_QUIT || event.key.keysym.sym == SDLK_ESCAPE) {
              sw->finished = 1;
              SDL_Quit();
          }
     }
 }
 
-
-
+void holdScreenUntilUserInput()
+{
+    SDL_Simplewin sw = getSDL_SimplewinPointer(NULL);
+    while(!sw->finished) {
+        Neill_SDL_Events(sw);
+    }
+}
 
 
 

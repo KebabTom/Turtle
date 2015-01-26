@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
             
             int parsedOK = parse();
             
+            holdScreenUntilUserInput();
+            
             shutDownParsing(NO_TESTING);
             
             if(parsedOK) {

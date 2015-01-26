@@ -39,8 +39,12 @@ void setUpForInterpreting(int testing)
     }
 }
 
-void shutDownInterpreting(int testing)
+void shutDownInterpreting()
 {
+    Turtle t = getTurtlePointer(NULL);
+    if(t->drawTurtle) {
+        shutDownDisplay();
+    }
     freeTurtle();
     freeMoveHistoryStack();
 }
@@ -75,16 +79,16 @@ void initialiseTurtle(int testing)
     Turtle t = getTurtlePointer(NULL);
     
     t->x = SCREEN_WIDTH/2.0;
-    t->y = SCREEN_WIDTH/2.0;
+    t->y = SCREEN_HEIGHT/2.0;
     t->angle = 0;
     t->moveLength = 0;
     t->penStatus = penDown;
     t->drawColour = white;
     
-    if(testing != TEST_WHITEBOX) {
-        t->drawTurtle = 1;
-    } else {
+    if(testing == TEST_WHITEBOX || testing == TEST_BLACKBOX) {
         t->drawTurtle = DRAW_SDL_IN_TESTS;
+    } else {
+        t->drawTurtle = 1;
     }
 }
     
@@ -175,7 +179,9 @@ void moveTurtle(int moveLength)
         double yAdjust = (double) stepLength * cos(radAngle);
         
         if(t->drawTurtle) {
-            drawLine((int)t->x, (int)t->y, (int)(t->x + xAdjust), (int)(t->y - yAdjust));
+            if(t->penStatus == penDown) {
+                drawLine((int)t->x, (int)t->y, (int)(t->x + xAdjust), (int)(t->y - yAdjust));
+            }
         }
         t->x += xAdjust;
         t->y -= yAdjust;
@@ -227,7 +233,7 @@ void testTurtleInitialisation()
     sput_fail_unless(t->angle == 0, "Turtle initialised with correct angle");
     sput_fail_unless(t->drawColour == white, "Turtle initialised with correct colour");
     
-    shutDownInterpreting(TEST_WHITEBOX);
+    shutDownInterpreting();
 }
 
 
@@ -258,7 +264,7 @@ void testTurtleActions()
     doAction(fd, 5000);
     sput_fail_unless((int) t->x + (int) t->y == 0, "After move at 45 degrees, x and y have been changed by the same ammount");
     
-    shutDownInterpreting(TEST_WHITEBOX);
+    shutDownInterpreting();
 }
 
 

@@ -142,8 +142,14 @@ void setUpForParsing(char *filePath, int testing)
     initialiseParseHelper(filePath, testing);
     createValStack();
     
-    if(testing != TEST_WHITEBOX) {
-        setUpForInterpreting(testing);
+    switch(testing) {
+        case TEST_WHITEBOX :
+            break;
+        case TEST_BLACKBOX :
+            setUpForInterpreting(TEST_WHITEBOX);
+            break;
+        default :
+            setUpForInterpreting(testing);
     }
 }
 
@@ -167,7 +173,7 @@ void shutDownParsing(int testing)
     freeParseHelper();
     
     if(testing != TEST_WHITEBOX) {
-        shutDownInterpreting(testing);
+        shutDownInterpreting();
     }
 }
 

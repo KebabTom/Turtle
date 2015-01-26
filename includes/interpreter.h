@@ -32,7 +32,7 @@ typedef enum clr Clr;
 
 
 void setUpForInterpreting(int testing);
-void shutDownInterpreting(int testing);
+void shutDownInterpreting();
 
 // TURTLE STRUCTURE FUNCTIONS
 void createTurtle();
