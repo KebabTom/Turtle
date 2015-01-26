@@ -1,12 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
+#include "display.h"
 #include "../includes/sput.h"
+#include <math.h>
 
 #define MAX_ANGLE 360
-#define SCREEN_WIDTH 1000
-#define SCREEN_HEIGHT 1000
+#define DRAW_SDL_IN_TESTS 0
 
 #define NO_TESTING 0
 #define TEST_WHITEBOX 1
@@ -40,7 +37,7 @@ void shutDownInterpreting(int testing);
 // TURTLE STRUCTURE FUNCTIONS
 void createTurtle();
 Turtle getTurtlePointer(Turtle newTurtle);
-void initialiseTurtle();
+void initialiseTurtle(int testing);
 void freeTurtle();
 
 // MOVE HISTORY STACK FUNCTIONS

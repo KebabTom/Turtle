@@ -5,7 +5,6 @@
 #define M_PI 3.1415926535
 #endif
 
-#define TURTLE_SPEED 4
 
 struct turtle {
     double x, y;
@@ -31,7 +30,13 @@ struct moveNode {
 void setUpForInterpreting(int testing)
 {
     createTurtle();
+    initialiseTurtle(testing);
     createMoveHistoryStack();
+    
+    Turtle t = getTurtlePointer(NULL);
+    if(t->drawTurtle) {
+        setUpDisplay();
+    }
 }
 
 void shutDownInterpreting(int testing)
@@ -53,7 +58,6 @@ void createTurtle() {
     
     getTurtlePointer(newTurtle);
     
-    initialiseTurtle();
 }
 
 Turtle getTurtlePointer(Turtle newTurtle)
@@ -66,7 +70,7 @@ Turtle getTurtlePointer(Turtle newTurtle)
     return t;
 }
 
-void initialiseTurtle()
+void initialiseTurtle(int testing)
 {
     Turtle t = getTurtlePointer(NULL);
     
@@ -77,7 +81,11 @@ void initialiseTurtle()
     t->penStatus = penDown;
     t->drawColour = white;
     
-    t->drawTurtle = 0;
+    if(testing != TEST_WHITEBOX) {
+        t->drawTurtle = 1;
+    } else {
+        t->drawTurtle = DRAW_SDL_IN_TESTS;
+    }
 }
     
 void freeTurtle()
@@ -167,7 +175,7 @@ void moveTurtle(int moveLength)
         double yAdjust = (double) stepLength * cos(radAngle);
         
         if(t->drawTurtle) {
-            //drawLine(t->x, t->y, t->x+xAdjust, t->y-yAdjust);
+            drawLine((int)t->x, (int)t->y, (int)(t->x + xAdjust), (int)(t->y - yAdjust));
         }
         t->x += xAdjust;
         t->y -= yAdjust;
