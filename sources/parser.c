@@ -1,4 +1,3 @@
-
 #include "../includes/parser.h"
 
 struct variable {
@@ -951,9 +950,15 @@ void testDOloops()
     shutDownParsing(TEST_WHITEBOX);
 }
 
-
-
-
+// independent main function - used in testing
+/*
+int main(void)
+{
+    runParserWhiteBoxTests();
+    
+    //runInterpreterBlackBoxTests();
+}
+*/
 
 
 

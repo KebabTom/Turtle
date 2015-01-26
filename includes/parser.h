@@ -1,4 +1,4 @@
-#include "turtleProcessor.h"
+#include "interpreter.h"
 
 #define TOKEN_LENGTH 100
 #define NUMBER_OF_VARIABLES 26
