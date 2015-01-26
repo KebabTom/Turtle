@@ -12,13 +12,37 @@ int main(int argc, char *argv[])
         exit(1);
     }
     
-    processInput(argc, argv, NO_TESTING);
-    
-    int parsedOK = parse();
-    
-    if(parsedOK) {
-        printf("Parsed OK\n");
+    int startMode = processInput(argc, argv);
+    switch (startMode) {
+        case NO_TESTING :
+        
+            setUpForParsing(argv[1], NO_TESTING);
+            
+            int parsedOK = parse();
+            
+            shutDownParsing(NO_TESTING);
+            
+            if(parsedOK) {
+                printf("Parsed OK\n");
+            }
+            
+            break;
+        case TEST_WHITEBOX :
+            runWhiteBoxTesting();
+            break;
+        case TEST_BLACKBOX :
+            runBlackBoxTesting();
+            break;
+        case TEST_ALL :
+            runWhiteBoxTesting();
+            runBlackBoxTesting();
+            break;
+        default :
+            fprintf(stderr, "ERROR - invalid output from processInput()\n");
     }
+    
+    return 0;
+    
     
 }
 
@@ -67,31 +91,29 @@ void printCommandLineError(int testing)
     }
 }
 
-void processInput(int argc, char *argv[], int testing)
+int processInput(int argc, char *argv[])
 {
     // if two arguments, set up the parse heper using filepath from argv[1]
     if(argc == 2) {
-        createParseHelper();
-        initialiseParseHelper(argv[1], testing);
+        return NO_TESTING;
     }
     
     
     // if three arguments, choose testing type based on argv[2]
     if(argc == 3) {
         if(strcmp(argv[2],"white") == 0) {
-            runWhiteBoxTesting();
-            exit(0);
+            return TEST_WHITEBOX;
         }
         if(strcmp(argv[2],"black") == 0) {
-            runBlackBoxTesting();
-            exit(0);
+            return TEST_BLACKBOX;
         }
         if(strcmp(argv[2],"all") == 0) {
-            runWhiteBoxTesting();
-            runBlackBoxTesting();
-            exit(0);
+            return TEST_ALL;
         }
     }
+    
+    fprintf(stderr, "ERROR - incorrect input allowed into processInput()\n");
+    exit(1);
     
 }
     
@@ -131,24 +153,24 @@ void testCommandLine()
         }
     }
     
-    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check detects error when only one argument passed");
+    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check detects error when only one argument passed");
     
     argc = 4;
-    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check detects error when more than 3 arguments passed");
+    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check detects error when more than 3 arguments passed");
     
     argc = 3;
     strcpy(argv[1], "testwrong");
-    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check detects error when 2nd of 3 arguments is not 'test' passed");
+    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check detects error when 2nd of 3 arguments is not 'test' passed");
     
     strcpy(argv[1], "test");
     strcpy(argv[2], "all");
-    sput_fail_unless(checkInput(argc, argv, TESTING) == 1, "Input check OK when 3 arguments and third is 'all'");
+    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 1, "Input check OK when 3 arguments and third is 'all'");
     strcpy(argv[2], "white");
-    sput_fail_unless(checkInput(argc, argv, TESTING) == 1, "Input check OK when 3 arguments and third is 'white'");
+    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 1, "Input check OK when 3 arguments and third is 'white'");
     strcpy(argv[2], "black");
-    sput_fail_unless(checkInput(argc, argv, TESTING) == 1, "Input check OK when 3 arguments and third is 'black'");
+    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 1, "Input check OK when 3 arguments and third is 'black'");
     strcpy(argv[2], "testwrong");
-    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check OK when 3 arguments and third is neither 'all', 'black' or 'white'");
+    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check OK when 3 arguments and third is neither 'all', 'black' or 'white'");
     
     for(int i = 0; i < 4; i++) {
         free(argv[i]);

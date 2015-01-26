@@ -3,8 +3,11 @@
 #define TOKEN_LENGTH 100
 #define NUMBER_OF_VARIABLES 26
 
-#define TESTING 1
 #define NO_TESTING 0
+#define TEST_WHITEBOX 1
+#define TEST_BLACKBOX 2
+#define TEST_ALL 3
+#define TEST_WITH_SYNTAX_ERRORS 0 //set to 1 to display syntax errors during testing
 
 typedef struct parseHelper *ParseHelper;
 typedef struct variable *Variable;
@@ -28,9 +31,9 @@ void readInTokensFromFile();
 void freeParseHelper();
 
 // PARSING FUNCTIONS
-void setUpForParsing();
+void setUpForParsing(char *filePath, int testing);
 int  parse();
-void shutDownParsing();
+void shutDownParsing(int testing);
 int  getToken(ParseHelper pH);
 TokenType whatToken(char *token);
 int checkForVarNum(char * token);

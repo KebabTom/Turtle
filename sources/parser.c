@@ -27,7 +27,7 @@ struct parseHelper {
   
   Variable varList[NUMBER_OF_VARIABLES];
   
-  int testing;
+  int showSyntaxErrors;
   int interpret;
 } ;
 
@@ -84,8 +84,13 @@ void initialiseParseHelper(char *filePath, int testing)
     
     initialiseVariableList(pH);
     
-    pH->testing = testing;
     if(testing) {
+        pH->showSyntaxErrors = TEST_WITH_SYNTAX_ERRORS;
+    } else {
+        pH->showSyntaxErrors = 1;
+    }
+    
+    if(testing == TEST_WHITEBOX) {
         pH->interpret = 0;
     } else {
         pH->interpret = 1;
@@ -132,12 +137,14 @@ void freeParseHelper()
 // PARSING FUNCTIONS
 ////////////////////
 
-void setUpForParsing()
+void setUpForParsing(char *filePath, int testing)
 {
-    ParseHelper pH = getParseHelperPointer(NULL);
+    createParseHelper();
+    initialiseParseHelper(filePath, testing);
     createValStack();
-    if(pH->interpret) {
-        createMoveHistoryStack();
+    
+    if(testing != TEST_WHITEBOX) {
+        setUpForInterpreting(testing);
     }
 }
 
@@ -148,18 +155,21 @@ void setUpForParsing()
 int parse()
 {
     
-    setUpForParsing();
     ParseHelper pH = getParseHelperPointer(NULL);
     
     int parsed = processMain(pH);
-    shutDownParsing();
     
     return parsed;
 }
 
-void shutDownParsing()
+void shutDownParsing(int testing)
 {
     freeValStack();
+    freeParseHelper();
+    
+    if(testing != TEST_WHITEBOX) {
+        shutDownInterpreting(testing);
+    }
 }
 
 int getToken(ParseHelper pH)
@@ -634,7 +644,7 @@ int sameString(char *a, char *b)
 
 int syntaxError(ParseHelper pH, char *message)
 {
-    if(!pH->testing) {
+    if(pH->showSyntaxErrors) {
         fprintf(stderr, "Syntax error - %s\nError at: %s\n", message, pH->token);
     }
     return 0;
@@ -795,7 +805,7 @@ void runParserWhiteBoxTests()
 void testHelperInitialisation()
 {
     createParseHelper();
-    initialiseParseHelper("testingFiles/parserTesting.txt", TESTING);
+    initialiseParseHelper("testingFiles/parserTesting.txt", TEST_WHITEBOX);
     ParseHelper pH = getParseHelperPointer(NULL);
     
     sput_fail_unless(pH->tokenFP != NULL, "Parser Helper sets token file pointer on initialisation");
@@ -805,82 +815,68 @@ void testHelperInitialisation()
 
 void testSyntaxErrors()
 {
-    createParseHelper();
-    initialiseParseHelper("testingFiles/test_simpleParse.txt", TESTING);
+    setUpForParsing("testingFiles/test_simpleParse.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed simple RT, LT and FD commands ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/test_noClosingBrace.txt", TESTING);
+    setUpForParsing("testingFiles/test_noClosingBrace.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse text with no closing brace");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/test_noOpeningBrace.txt", TESTING);
+    setUpForParsing("testingFiles/test_noOpeningBrace.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse text with no opening brace");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/test_textAfterClosingBrace.txt", TESTING);
+    setUpForParsing("testingFiles/test_textAfterClosingBrace.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse text when t is remaining text after last brace");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
 }
 
 void testVarNum()
 {
-    createParseHelper();
-    initialiseParseHelper("testingFiles/VarNum_Testing/test_simpleVarNum.txt", TESTING);
+    setUpForParsing("testingFiles/VarNum_Testing/test_simpleVarNum.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed simple access of set variable OK");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/VarNum_Testing/test_uninitialisedVarNum.txt", TESTING);
+    setUpForParsing("testingFiles/VarNum_Testing/test_uninitialisedVarNum.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse text when variable is used uninitialised");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
 }
 
 void testSetCommand()
 {
-    createParseHelper();
-    initialiseParseHelper("testingFiles/SET_Testing/test_simpleSET.txt", TESTING);
+    setUpForParsing("testingFiles/SET_Testing/test_simpleSET.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed simple SET commands ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/SET_Testing/test_SETmultiple.txt", TESTING);
+    setUpForParsing("testingFiles/SET_Testing/test_SETmultiple.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed multiple SET commands to same variable ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
+    setUpForParsing("testingFiles/SET_Testing/test_selfSET.txt", TEST_WHITEBOX);
     ParseHelper pH = getParseHelperPointer(NULL);
-    initialiseParseHelper("testingFiles/SET_Testing/test_selfSET.txt", TESTING);
     sput_fail_unless(parse() == 1 && getVariableVal(pH, 'C') == 10, "Parsed variable setting itself with correct value (e.g. C += C ;)");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolish.txt", TESTING);
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolish.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed SET commands with reverse polish maths ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolishUndefined.txt", TESTING);
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolishUndefined.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse command performing reverse polish on undefined variable");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/SET_Testing/test_SETlongPolish.txt", TESTING);
+    setUpForParsing("testingFiles/SET_Testing/test_SETlongPolish.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed SET commands using long Polish expression ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolishTooManyVariables.txt", TESTING);
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolishTooManyVariables.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many variables) reverse polish equation");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TESTING);
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many operators) reverse polish equation");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
 }
 
 void testValStack()
@@ -913,57 +909,46 @@ void testValStack()
    
 void testDOloops()
 {
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_simpleDO.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_simpleDO.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed simple DO loop ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
 
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse DO without opening brace");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse DO without closing brace");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_noFROM_DO.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_noFROM_DO.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse DO without FROM keyword");
-    freeParseHelper();
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_noTO_DO.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_noTO_DO.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 0, "Will not parse DO without TO keyword");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_nestedDO.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_nestedDO.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed nested DO loop ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_polishDO.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_polishDO.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed DO loop containing reverse polish ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
-    initialiseParseHelper("testingFiles/DO_Testing/test_complexDO.txt", TESTING);
+    setUpForParsing("testingFiles/DO_Testing/test_complexDO.txt", TEST_WHITEBOX);
     sput_fail_unless(parse() == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
+    setUpForParsing("testingFiles/DO_Testing/test_simpleDOvalues.txt", TEST_WHITEBOX);
     ParseHelper pH = getParseHelperPointer(NULL);
-    initialiseParseHelper("testingFiles/DO_Testing/test_simpleDOvalues.txt", TESTING);
     sput_fail_unless(parse() == 1 && (int) getVariableVal(pH, 'B') == 20, "Parsed simple DO loop with correct value at end");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
     
-    createParseHelper();
+    setUpForParsing("testingFiles/DO_Testing/test_nestedDOvalues.txt", TEST_WHITEBOX);
     pH = getParseHelperPointer(NULL);
-    initialiseParseHelper("testingFiles/DO_Testing/test_nestedDOvalues.txt", TESTING);
     sput_fail_unless(parse() == 1 && (int) getVariableVal(pH, 'D') == 31, "Parsed nested DO loop with correct value at end");
-    freeParseHelper();
+    shutDownParsing(TEST_WHITEBOX);
 }
 
 
