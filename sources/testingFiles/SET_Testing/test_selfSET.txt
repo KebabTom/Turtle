@@ -1,0 +1,9 @@
+{
+FD 40
+SET C := 5 ;
+SET C := C C + ;
+LT 50
+FD 40
+RT 45
+FD 50
+}

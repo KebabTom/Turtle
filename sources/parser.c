@@ -134,7 +134,11 @@ void freeParseHelper()
 
 void setUpForParsing()
 {
+    ParseHelper pH = getParseHelperPointer(NULL);
     createValStack();
+    if(pH->interpret) {
+        createMoveHistoryStack();
+    }
 }
 
     
@@ -305,6 +309,9 @@ int processInstruction(ParseHelper pH)
         if(!processVarNum(pH) ) {
             return 0;
         }
+        if(pH->interpret) {
+            doMove(fd, pH->val);
+        }
         return 1;
     }
     
@@ -312,12 +319,18 @@ int processInstruction(ParseHelper pH)
         if(!processVarNum(pH) ) {
             return 0;
         }
+        if(pH->interpret) {
+            doMove(lt, pH->val);
+        }
         return 1;
     }
     
     if(strcmp(pH->token, "RT") == 0) {
         if(!processVarNum(pH) ) {
             return 0;
+        }
+        if(pH->interpret) {
+            doMove(rt, pH->val);
         }
         return 1;
     }
@@ -533,6 +546,7 @@ int checkVariableAssigned(char c, ParseHelper pH)
     for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
         if(pH->varList[i]->varName == c) {
             if(pH->varList[i]->assigned == 1) {
+                pH->val = pH->varList[i]->contents;
                 return 1;
             }
         }
@@ -578,7 +592,7 @@ void assignValToVariable(ParseHelper pH, char varToSet, double val)
     for(int i = 0; i < NUMBER_OF_VARIABLES && foundVar == 0; i++) {
         if(pH->varList[i]->varName == varToSet) {
             foundVar = 1;
-            pH->varList[i]->contents = pH->val;
+            pH->varList[i]->contents = val;
             pH->varList[i]->assigned = 1;
         }
     }
@@ -593,8 +607,14 @@ double getTokenVal(ParseHelper pH)
     if(checkForNumber(pH->token, pH) ) {
         return pH->val;
     }
+    return getVariableVal(pH, pH->token[0]);
+}
+
+double getVariableVal(ParseHelper pH, char c)
+{
+
     for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
-        if(pH->varList[i]->varName == pH->token[0]) {
+        if(pH->varList[i]->varName == c) {
             return pH->varList[i]->contents;
         }
     }
@@ -832,6 +852,12 @@ void testSetCommand()
     freeParseHelper();
     
     createParseHelper();
+    ParseHelper pH = getParseHelperPointer(NULL);
+    initialiseParseHelper("testingFiles/SET_Testing/test_selfSET.txt", TESTING);
+    sput_fail_unless(parse() == 1 && getVariableVal(pH, 'C') == 10, "Parsed variable setting itself with correct value (e.g. C += C ;)");
+    freeParseHelper();
+    
+    createParseHelper();
     initialiseParseHelper("testingFiles/SET_Testing/test_SETpolish.txt", TESTING);
     sput_fail_unless(parse() == 1, "Parsed SET commands with reverse polish maths ok");
     freeParseHelper();
@@ -925,6 +951,18 @@ void testDOloops()
     createParseHelper();
     initialiseParseHelper("testingFiles/DO_Testing/test_complexDO.txt", TESTING);
     sput_fail_unless(parse() == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    ParseHelper pH = getParseHelperPointer(NULL);
+    initialiseParseHelper("testingFiles/DO_Testing/test_simpleDOvalues.txt", TESTING);
+    sput_fail_unless(parse() == 1 && (int) getVariableVal(pH, 'B') == 20, "Parsed simple DO loop with correct value at end");
+    freeParseHelper();
+    
+    createParseHelper();
+    pH = getParseHelperPointer(NULL);
+    initialiseParseHelper("testingFiles/DO_Testing/test_nestedDOvalues.txt", TESTING);
+    sput_fail_unless(parse() == 1 && (int) getVariableVal(pH, 'D') == 31, "Parsed nested DO loop with correct value at end");
     freeParseHelper();
 }
 

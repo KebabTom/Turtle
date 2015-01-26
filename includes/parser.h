@@ -1,4 +1,4 @@
-#include "interpreter.h"
+#include "turtleProcessor.h"
 
 #define TOKEN_LENGTH 100
 #define NUMBER_OF_VARIABLES 26
@@ -13,11 +13,6 @@ typedef struct valNode *ValNode;
 
 
 
-enum tokenType {
-  instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
-  from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar
-} ;
-typedef enum tokenType TokenType;
 
 enum mathSymbol {
   add, subtract, divide, multiply
@@ -57,6 +52,7 @@ int checkValidOperator(char c, ParseHelper pH);
 void assignValToCurrentVariable(ParseHelper pH);
 void assignValToVariable(ParseHelper pH, char varToSet, double val);
 double getTokenVal(ParseHelper pH);
+double getVariableVal(ParseHelper pH, char c);
 
 int sameString(char *a, char *b);
 int syntaxError(ParseHelper pH, char *message);

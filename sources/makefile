@@ -1,6 +1,6 @@
 CFLAGS = `sdl2-config --cflags` -O4 -Wall -pedantic -std=c99 -lm
 TARGET = turtle
-SOURCES =  $(TARGET).c blackBoxTesting.c parser.c interpreter.c
+SOURCES =  $(TARGET).c blackBoxTesting.c parser.c turtleProcessor.c
 LIBS =  `sdl2-config --libs`
 CC = gcc
 

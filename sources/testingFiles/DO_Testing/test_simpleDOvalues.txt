@@ -1,0 +1,7 @@
+{
+DO A FROM 1 TO 10 {
+  FD A
+  RT 10
+  SET B := A 2 * ;
+}
+}
