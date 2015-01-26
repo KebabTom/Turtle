@@ -125,9 +125,14 @@ void runWhiteBoxTesting()
 	  
     runCommandLineTests();
     runParserWhiteBoxTests();
+    runInterpreterWhiteBoxTests();
     
 }
 
+void runBlackBoxTesting()
+{
+    runParserBlackBoxTests();
+}
 
 void runCommandLineTests()
 {  
@@ -179,11 +184,86 @@ void testCommandLine()
 }
 
 
+void runParserBlackBoxTests()
+{
+	  sput_start_testing();
+	  
+    sput_enter_suite("testSyntaxErrors(): Checking test scripts with missing brackets etc");
+    sput_run_test(testSyntaxErrors);
+    sput_leave_suite();
+    
+    sput_enter_suite("testVarNum(): Checking test scripts with variables and numbers");
+    sput_run_test(testVarNum);
+    sput_leave_suite();
+    
+    sput_enter_suite("testSetCommand(): Checking test scripts using the SET command");
+    sput_run_test(testSetCommand);
+    sput_leave_suite();
+    
+	  sput_finish_testing();
+}
 
 
+void testSyntaxErrors()
+{
+    setUpForParsing("testingFiles/test_simpleParse.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed simple RT, LT and FD commands ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/test_noClosingBrace.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse text with no closing brace");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/test_noOpeningBrace.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse text with no opening brace");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/test_textAfterClosingBrace.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse text when t is remaining text after last brace");
+    shutDownParsing(TEST_WHITEBOX);
+}
 
+void testVarNum()
+{
+    setUpForParsing("testingFiles/VarNum_Testing/test_simpleVarNum.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed simple access of set variable OK");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/VarNum_Testing/test_uninitialisedVarNum.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse text when variable is used uninitialised");
+    shutDownParsing(TEST_WHITEBOX);
+}
 
+void testSetCommand()
+{
+    setUpForParsing("testingFiles/SET_Testing/test_simpleSET.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed simple SET commands ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/SET_Testing/test_SETmultiple.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed multiple SET commands to same variable ok");
+    shutDownParsing(TEST_WHITEBOX);
 
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolish.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed SET commands with reverse polish maths ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolishUndefined.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse command performing reverse polish on undefined variable");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/SET_Testing/test_SETlongPolish.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed SET commands using long Polish expression ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolishTooManyVariables.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many variables) reverse polish equation");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many operators) reverse polish equation");
+    shutDownParsing(TEST_WHITEBOX);
+}
 
 
 

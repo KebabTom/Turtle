@@ -3,10 +3,6 @@
 #define TOKEN_LENGTH 100
 #define NUMBER_OF_VARIABLES 26
 
-#define NO_TESTING 0
-#define TEST_WHITEBOX 1
-#define TEST_BLACKBOX 2
-#define TEST_ALL 3
 #define TEST_WITH_SYNTAX_ERRORS 0 //set to 1 to display syntax errors during testing
 
 typedef struct parseHelper *ParseHelper;
@@ -74,8 +70,6 @@ void freeValStack();
 // TESTING FUNCTIONS
 void runParserWhiteBoxTests();
 void testHelperInitialisation();
-void testSyntaxErrors();
-void testVarNum();
-void testSetCommand();
+void testSetAssignment();
 void testValStack();
 void testDOloops();

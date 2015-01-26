@@ -257,9 +257,7 @@ int checkForAnyVar(char * token)
 
 int processMain(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     
     if(whatToken(pH->token) != openBrace ) {
         return syntaxError(pH, "all code sections should begin with an opening brace");
@@ -287,9 +285,7 @@ int processMain(ParseHelper pH)
 
 int processInstrctList(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     
     if(whatToken(pH->token) == openBrace) {
         pH->hangingBraces++;
@@ -319,7 +315,7 @@ int processInstruction(ParseHelper pH)
             return 0;
         }
         if(pH->interpret) {
-            doMove(fd, pH->val);
+            doAction(fd, pH->val);
         }
         return 1;
     }
@@ -329,7 +325,7 @@ int processInstruction(ParseHelper pH)
             return 0;
         }
         if(pH->interpret) {
-            doMove(lt, pH->val);
+            doAction(lt, pH->val);
         }
         return 1;
     }
@@ -339,7 +335,7 @@ int processInstruction(ParseHelper pH)
             return 0;
         }
         if(pH->interpret) {
-            doMove(rt, pH->val);
+            doAction(rt, pH->val);
         }
         return 1;
     }
@@ -359,9 +355,7 @@ int processInstruction(ParseHelper pH)
 
 int processVarNum(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) == assignedVar || whatToken(pH->token) == num) {
         return 1;
     }
@@ -376,18 +370,14 @@ int processVarNum(ParseHelper pH)
 
 int processSet(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(!checkForAnyVar(pH->token)) {
         return 0;
     }
     
     char varToSet = pH->token[0];
     
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != equals) {
         return 0;
     }
@@ -401,9 +391,7 @@ int processSet(ParseHelper pH)
 
 int processPolish(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     
     if(whatToken(pH->token) == num) {
         pushToValStack(pH->val);
@@ -462,24 +450,18 @@ int finishPolish(ParseHelper pH)
 
 int processDo(ParseHelper pH)
 {
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(!checkForAnyVar(pH->token)) {
         return syntaxError(pH, "invalid variable following DO command");
     }
     char loopVariable = pH->token[0];
     
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != from) {
         return syntaxError(pH, "missing FROM in DO command");
     }
     
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following FROM in DO command");
     }
@@ -487,16 +469,12 @@ int processDo(ParseHelper pH)
     int loopVal = (int) getTokenVal(pH);
     assignValToVariable(pH, loopVariable, (double)loopVal);
     
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != to) {
         return syntaxError(pH, "missing TO in DO command");
     }
     
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
@@ -504,9 +482,7 @@ int processDo(ParseHelper pH)
     int loopEndingVal = (int) getTokenVal(pH);
     int doLoopStartIndex = pH->currentTokenIndex;
     
-    if(!getToken(pH)) {
-        return 0;
-    }
+    if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != openBrace) {
         return syntaxError(pH, "missing opening brace following DO command");
     }
@@ -775,16 +751,8 @@ void runParserWhiteBoxTests()
     sput_run_test(testHelperInitialisation);
     sput_leave_suite();
     
-    sput_enter_suite("testSyntaxErrors(): Checking test scripts with missing brackets etc");
-    sput_run_test(testSyntaxErrors);
-    sput_leave_suite();
-    
-    sput_enter_suite("testVarNum(): Checking test scripts with variables and numbers");
-    sput_run_test(testVarNum);
-    sput_leave_suite();
-    
-    sput_enter_suite("testSetCommand(): Checking test scripts using the SET command");
-    sput_run_test(testSetCommand);
+    sput_enter_suite("testSetAssignment(): Checking test scripts using the SET command");
+    sput_run_test(testSetAssignment);
     sput_leave_suite();
     
     sput_enter_suite("testValStack(): Testing pushing and popping from Val Stack");
@@ -812,69 +780,11 @@ void testHelperInitialisation()
     freeParseHelper();
 }
 
-void testSyntaxErrors()
+void testSetAssignment()
 {
-    setUpForParsing("testingFiles/test_simpleParse.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed simple RT, LT and FD commands ok");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/test_noClosingBrace.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse text with no closing brace");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/test_noOpeningBrace.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse text with no opening brace");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/test_textAfterClosingBrace.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse text when t is remaining text after last brace");
-    shutDownParsing(TEST_WHITEBOX);
-}
-
-void testVarNum()
-{
-    setUpForParsing("testingFiles/VarNum_Testing/test_simpleVarNum.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed simple access of set variable OK");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/VarNum_Testing/test_uninitialisedVarNum.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse text when variable is used uninitialised");
-    shutDownParsing(TEST_WHITEBOX);
-}
-
-void testSetCommand()
-{
-    setUpForParsing("testingFiles/SET_Testing/test_simpleSET.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed simple SET commands ok");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/SET_Testing/test_SETmultiple.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed multiple SET commands to same variable ok");
-    shutDownParsing(TEST_WHITEBOX);
-    
     setUpForParsing("testingFiles/SET_Testing/test_selfSET.txt", TEST_WHITEBOX);
     ParseHelper pH = getParseHelperPointer(NULL);
     sput_fail_unless(parse() == 1 && getVariableVal(pH, 'C') == 10, "Parsed variable setting itself with correct value (e.g. C += C ;)");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/SET_Testing/test_SETpolish.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed SET commands with reverse polish maths ok");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/SET_Testing/test_SETpolishUndefined.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse command performing reverse polish on undefined variable");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/SET_Testing/test_SETlongPolish.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed SET commands using long Polish expression ok");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/SET_Testing/test_SETpolishTooManyVariables.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many variables) reverse polish equation");
-    shutDownParsing(TEST_WHITEBOX);
-    
-    setUpForParsing("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse SET command with unbalanced (too many operators) reverse polish equation");
     shutDownParsing(TEST_WHITEBOX);
 }
 
@@ -951,6 +861,7 @@ void testDOloops()
 }
 
 // independent main function - used in testing
+// command line compile code: gcc -O4 -Wall -pedantic -std=c99 -lm -o parseTest parser.c interpreter.c
 /*
 int main(void)
 {
