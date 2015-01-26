@@ -38,7 +38,6 @@ int checkInput(int argc, char *argv[], int testing)
             if(!testing) {
                 fprintf(stderr, "ERROR: Unable to locate file at '%s'\n", argv[1]);
                 printCommandLineError(testing);
-                fclose(fp);
                 return 0;
             }
         }
@@ -64,6 +63,7 @@ void printCommandLineError(int testing)
 {
     if(!testing) {
         fprintf(stderr,"please run the turtle program with one of the command line arguments as follows:\n\nTo parse a .txt file and draw a shape:\n./turtle <FILENAME>.txt\n\nFor testing enter one of the below:\n./turtle test all\n./turtle test white\n./turtle test black\n");
+        exit(1);
     }
 }
 

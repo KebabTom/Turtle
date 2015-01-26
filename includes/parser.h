@@ -38,6 +38,8 @@ int  parse();
 void shutDownParsing();
 int  getToken(ParseHelper pH);
 TokenType whatToken(char *token);
+int checkForVarNum(char * token);
+int checkForAnyVar(char * token);
 int  processMain(ParseHelper pH);
 int  processInstrctList(ParseHelper pH);
 int  processInstruction(ParseHelper pH);

@@ -16,7 +16,8 @@ struct parseHelper {
   int hangingBraces;
   
   int numberOfTokens;
-  char token[TOKEN_LENGTH];
+  int currentTokenIndex;
+  char *token;
   char **tokenArray;
   
   double val;
@@ -78,6 +79,7 @@ void initialiseParseHelper(char *filePath, int testing)
     
     pH->lineNumber = 1;
     pH->hangingBraces = 0;
+    pH->currentTokenIndex = 0;
     pH->numberOfTokens = 0;
     
     initialiseVariableList(pH);
@@ -159,25 +161,34 @@ void shutDownParsing()
 int getToken(ParseHelper pH)
 {
     
-    if(fscanf(pH->tokenFP, "%s", pH->token) != 1) {
+    if(pH->currentTokenIndex < pH->numberOfTokens-1) {
+        pH->currentTokenIndex++;
+        pH->token = pH->tokenArray[pH->currentTokenIndex];
+    //printf("%s\n", pH->token);
+        return 1;
+    }
+    
+    pH->numberOfTokens++;
+    pH->currentTokenIndex = pH->numberOfTokens-1;
+    
+    pH->tokenArray = (char**)realloc(pH->tokenArray,pH->numberOfTokens * sizeof(char*));
+    if(pH->tokenArray == NULL) {
+        fprintf(stderr, "ERROR - realloc failed in getToken()\n");
+        exit(1);
+    }
+    pH->tokenArray[pH->numberOfTokens-1] = (char*)calloc(TOKEN_LENGTH, sizeof(char));
+    if(pH->tokenArray[pH->numberOfTokens-1] == NULL) {
+        fprintf(stderr, "ERROR - malloc failed in getToken()\n");
+        exit(1);
+    }
+        
+    if(fscanf(pH->tokenFP, "%s", pH->tokenArray[pH->numberOfTokens-1]) != 1) {
         if(fgetc(pH->tokenFP) == EOF) {
-            return syntaxError(pH, "closing braces do not match opening braces. Are you missing a closing brace?");
+            return syntaxError(pH, "TOKEN closing braces do not match opening braces. Are you missing a closing brace?");
         }
         return syntaxError(pH, "invalid token");
     } else {
-        pH->numberOfTokens++;
-        pH->tokenArray = (char**)realloc(pH->tokenArray,pH->numberOfTokens * sizeof(char*));
-        if(pH->tokenArray == NULL) {
-            fprintf(stderr, "ERROR - realloc failed in getToken()\n");
-            exit(1);
-        }
-        pH->tokenArray[pH->numberOfTokens-1] = (char*)calloc(TOKEN_LENGTH, sizeof(char));
-        if(pH->tokenArray[pH->numberOfTokens-1] == NULL) {
-            fprintf(stderr, "ERROR - malloc failed in getToken()\n");
-            exit(1);
-        }
-        
-        strcpy(pH->tokenArray[pH->numberOfTokens-1], pH->token);
+        pH->token = pH->tokenArray[pH->numberOfTokens-1];
     }
     //printf("%s\n", pH->token);
     return 1;
@@ -214,12 +225,28 @@ TokenType whatToken(char *token)
     
     else {return noToken;}
 }
-    
+
+int checkForVarNum(char * token)
+{
+    if(whatToken(token) == assignedVar || whatToken(token) == num) {
+        return 1;
+    }
+    return 0;
+}
+
+int checkForAnyVar(char * token)
+{
+    if(whatToken(token) == assignedVar || whatToken(token) == unassignedVar) {
+        return 1;
+    }
+    return 0;
+}
 
 int processMain(ParseHelper pH)
 {
-    getToken(pH);
-    
+    if(!getToken(pH)) {
+        return 0;
+    }
     
     if(whatToken(pH->token) != openBrace ) {
         return syntaxError(pH, "all code sections should begin with an opening brace");
@@ -237,7 +264,6 @@ int processMain(ParseHelper pH)
             }
             return 1;
         } else {
-            printf("Braces: %d\n", pH->hangingBraces);
             return syntaxError(pH, "closing braces do not match opening braces. Are you missing a closing brace?");
         }
     } else {
@@ -248,7 +274,14 @@ int processMain(ParseHelper pH)
 
 int processInstrctList(ParseHelper pH)
 {
-    getToken(pH);
+    if(!getToken(pH)) {
+        return 0;
+    }
+    
+    if(whatToken(pH->token) == openBrace) {
+        pH->hangingBraces++;
+        return(processInstrctList(pH));
+    }
     
     if(whatToken(pH->token) == instruction){
         if(!processInstruction(pH)) {
@@ -304,7 +337,9 @@ int processInstruction(ParseHelper pH)
 
 int processVarNum(ParseHelper pH)
 {
-    getToken(pH);
+    if(!getToken(pH)) {
+        return 0;
+    }
     if(whatToken(pH->token) == assignedVar || whatToken(pH->token) == num) {
         return 1;
     }
@@ -319,14 +354,18 @@ int processVarNum(ParseHelper pH)
 
 int processSet(ParseHelper pH)
 {
-    getToken(pH);
-    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != unassignedVar) {
+    if(!getToken(pH)) {
+        return 0;
+    }
+    if(!checkForAnyVar(pH->token)) {
         return 0;
     }
     
     char varToSet = pH->token[0];
     
-    getToken(pH);
+    if(!getToken(pH)) {
+        return 0;
+    }
     if(whatToken(pH->token) != equals) {
         return 0;
     }
@@ -340,7 +379,9 @@ int processSet(ParseHelper pH)
 
 int processPolish(ParseHelper pH)
 {
-    getToken(pH);
+    if(!getToken(pH)) {
+        return 0;
+    }
     
     if(whatToken(pH->token) == num) {
         pushToValStack(pH->val);
@@ -353,7 +394,7 @@ int processPolish(ParseHelper pH)
         return syntaxError(pH, "all reverse polish operators/variables should only be 1 character long separated by spaces");
     }
     
-    if(whatToken(pH->token) == assignedVar || whatToken(pH->token) == num) {
+    if(checkForVarNum(pH->token)) {
         double d = getTokenVal(pH);
         pushToValStack(d);
         return processPolish(pH);
@@ -399,45 +440,63 @@ int finishPolish(ParseHelper pH)
 
 int processDo(ParseHelper pH)
 {
-    getToken(pH);
-    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != unassignedVar) {
+    if(!getToken(pH)) {
+        return 0;
+    }
+    if(!checkForAnyVar(pH->token)) {
         return syntaxError(pH, "invalid variable following DO command");
     }
     char loopVariable = pH->token[0];
     
-    getToken(pH);
+    if(!getToken(pH)) {
+        return 0;
+    }
     if(whatToken(pH->token) != from) {
         return syntaxError(pH, "missing FROM in DO command");
     }
     
-    getToken(pH);
-    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != num) {
+    if(!getToken(pH)) {
+        return 0;
+    }
+    if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following FROM in DO command");
     }
     
     int loopVal = (int) getTokenVal(pH);
-    assignValToVariable(pH, loopVariable, loopVal);
+    assignValToVariable(pH, loopVariable, (double)loopVal);
     
-    getToken(pH);
+    if(!getToken(pH)) {
+        return 0;
+    }
     if(whatToken(pH->token) != to) {
         return syntaxError(pH, "missing TO in DO command");
     }
     
-    getToken(pH);
-    if(whatToken(pH->token) != assignedVar && whatToken(pH->token) != num) {
+    if(!getToken(pH)) {
+        return 0;
+    }
+    if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
     
     int loopEndingVal = (int) getTokenVal(pH);
+    int doLoopStartIndex = pH->currentTokenIndex;
     
-    getToken(pH);
+    if(!getToken(pH)) {
+        return 0;
+    }
     if(whatToken(pH->token) != openBrace) {
         return syntaxError(pH, "missing opening brace following DO command");
     }
-    pH->hangingBraces++;
-    
-    if(!processInstrctList(pH)) {
-        return syntaxError(pH, "DO error");
+        
+    for(int i = loopVal; i <= loopEndingVal; i++) {
+        assignValToVariable(pH, loopVariable, (double)i);
+        pH->currentTokenIndex = doLoopStartIndex;
+        
+        
+        if(!processInstrctList(pH)) {
+            return syntaxError(pH, "DO error");
+        }
     }
     return 1;
 
@@ -839,6 +898,21 @@ void testDOloops()
     freeParseHelper();
     
     createParseHelper();
+    initialiseParseHelper("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse DO without closing brace");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/DO_Testing/test_noFROM_DO.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse DO without FROM keyword");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/DO_Testing/test_noTO_DO.txt", TESTING);
+    sput_fail_unless(parse() == 0, "Will not parse DO without TO keyword");
+    freeParseHelper();
+    
+    createParseHelper();
     initialiseParseHelper("testingFiles/DO_Testing/test_nestedDO.txt", TESTING);
     sput_fail_unless(parse() == 1, "Parsed nested DO loop ok");
     freeParseHelper();
@@ -846,6 +920,11 @@ void testDOloops()
     createParseHelper();
     initialiseParseHelper("testingFiles/DO_Testing/test_polishDO.txt", TESTING);
     sput_fail_unless(parse() == 1, "Parsed DO loop containing reverse polish ok");
+    freeParseHelper();
+    
+    createParseHelper();
+    initialiseParseHelper("testingFiles/DO_Testing/test_complexDO.txt", TESTING);
+    sput_fail_unless(parse() == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
     freeParseHelper();
 }
 

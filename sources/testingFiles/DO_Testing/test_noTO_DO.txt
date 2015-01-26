@@ -1,0 +1,7 @@
+{
+DO A FROM 1 100 {
+  FD A
+  RT 10
+}
+RT 20
+}

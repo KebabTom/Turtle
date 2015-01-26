@@ -1,5 +1,5 @@
 {
-DO A FROM 1 TO 100 {
+DO A FROM 1 TO 3 {
   FD A
   RT 10
      DO B FROM 5 TO 10 {
