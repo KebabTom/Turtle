@@ -254,6 +254,16 @@ void backstep(Turtle t, int steps)
     }
 }
 
+void switchPenStatus()
+{
+    Turtle t = getTurtlePointer(NULL);
+    
+    if(t->penStatus == penUp) {
+        t->penStatus = penDown;
+    } else {
+        t->penStatus = penUp;
+    }
+}
 
 //////////////////////////////////////////////////////////////////////
 // MATHS FUNCTIONS

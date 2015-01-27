@@ -1,0 +1,13 @@
+{
+SET A := 10 ;
+FD A
+PN
+FD A
+PN
+RT 90
+FD A
+PN
+PN
+RT 90
+FD A
+}

@@ -17,7 +17,7 @@ typedef struct turtle *Turtle ;
 enum tokenType {
   instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
   from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar, bkStep,
-  moreThan, lessThan
+  moreThan, lessThan, penChange
 } ;
 typedef enum tokenType TokenType;
 
@@ -57,6 +57,7 @@ void doAction(TokenType actionType, double val);
 void moveTurtle(int moveLength);
 void storeTurtlePosition(Turtle t);
 void backstep(Turtle t, int steps);
+void switchPenStatus();
 
 
 // MATHS FUNCTIONS

@@ -75,3 +75,4 @@ void testHelperInitialisation();
 void testSetAssignment();
 void testValStack();
 void testDOloops();
+void testPenSwitchCommand();

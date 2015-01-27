@@ -223,6 +223,7 @@ TokenType whatToken(char *token)
     if(sameString(token, "SET"))   {return instruction;}
     if(sameString(token, "DO"))    {return instruction;}
     if(sameString(token, "BKSTP")) {return instruction;}
+    if(sameString(token, "PN"))    {return instruction;}
     if(sameString(token, "FROM"))  {return from;}
     if(sameString(token, "TO"))    {return to;}
     if(sameString(token, "{"))     {return openBrace;}
@@ -356,6 +357,13 @@ int processInstruction(ParseHelper pH)
         }
         if(pH->interpret) {
             doAction(bkStep, pH->val);
+        }
+        return 1;
+    }
+    
+    if(strcmp(pH->token, "PN") == 0) {
+        if(pH->interpret) {
+            switchPenStatus();
         }
         return 1;
     }
@@ -504,13 +512,16 @@ int processDo(ParseHelper pH)
     }
     
     int loopEndingVal = (int) getTokenVal(pH);
+    
+    // record token index, look ahead for { then reset token index to process loop
     int doLoopStartIndex = pH->currentTokenIndex;
     
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != openBrace) {
         return syntaxError(pH, "missing opening brace following DO command");
     }
-        
+    pH->currentTokenIndex = doLoopStartIndex;
+    
     for(int i = loopVal; i <= loopEndingVal; i++) {
         assignValToVariable(pH, loopVariable, (double)i);
         pH->currentTokenIndex = doLoopStartIndex;
@@ -545,16 +556,18 @@ int processWhile(ParseHelper pH)
     }
     
     double loopTargetVal = getTokenVal(pH);
-    int doLoopStartIndex = pH->currentTokenIndex;
     
+    // record token index, look ahead for { then reset token index to process loop
+    int loopStartIndex = pH->currentTokenIndex;
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != openBrace) {
         return syntaxError(pH, "missing opening brace following WHERE command");
     }
+    pH->currentTokenIndex = loopStartIndex;
     
     if(loopType == lessThan) {
         while(getVariableVal(pH, loopVariable) < loopTargetVal) {
-            pH->currentTokenIndex = doLoopStartIndex;
+            pH->currentTokenIndex = loopStartIndex;
             
             if(!processInstrctList(pH)) {
                 return syntaxError(pH, "WHERE error");
@@ -562,7 +575,7 @@ int processWhile(ParseHelper pH)
         }
     } else {
         while(getVariableVal(pH, loopVariable) > loopTargetVal) {
-            pH->currentTokenIndex = doLoopStartIndex;
+            pH->currentTokenIndex = loopStartIndex;
             
             if(!processInstrctList(pH)) {
                 return syntaxError(pH, "WHERE error");

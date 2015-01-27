@@ -1,0 +1,6 @@
+{
+SET A := 10 ;
+FD A
+PN
+FD A
+}

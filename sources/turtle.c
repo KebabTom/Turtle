@@ -210,6 +210,10 @@ void runParserBlackBoxTests()
     sput_run_test(testWhileCommand);
     sput_leave_suite();
     
+    sput_enter_suite("testPenSwitchCommand(): Checking test scripts using the PN command");
+    sput_run_test(testPenSwitchCommand);
+    sput_leave_suite();
+    
 	  sput_finish_testing();
 }
 
@@ -317,7 +321,16 @@ void testWhileCommand()
     shutDownParsing(TEST_WHITEBOX);
 }
 
-
+void testPenSwitchCommand()
+{
+    setUpForParsing("testingFiles/PN_Testing/test_simplePEN.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed pen switch ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/PN_Testing/test_multiplePEN.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed multiple pen switches ok");
+    shutDownParsing(TEST_WHITEBOX);
+}
 
 
 
