@@ -6,6 +6,8 @@
 #endif
 
 
+
+
 struct turtle {
     double x, y;
     int angle;
@@ -85,7 +87,7 @@ void initialiseTurtle(int testing)
     t->penStatus = penDown;
     t->drawColour = white;
     
-    if(testing == TEST_WHITEBOX || testing == TEST_BLACKBOX) {
+    if(testing) {
         t->drawTurtle = DRAW_SDL_IN_TESTS;
     } else {
         t->drawTurtle = 1;
@@ -302,6 +304,26 @@ double degreesToRad(int deg)
     return (double) deg * (M_PI/180.0); //multiply angle in degrees by pi/180 to give angle in radians
 }
 
+
+int getTurtleX()
+{
+    return (int) getTurtlePointer(NULL)->x;
+}
+
+int getTurtleY()
+{
+    return (int) getTurtlePointer(NULL)->y;
+}
+
+int getTurtleAngle()
+{
+    return getTurtlePointer(NULL)->angle;
+}
+
+Clr getTurtleColour()
+{
+    return getTurtlePointer(NULL)->drawColour;
+}
 
 //////////////////////////////////////////////////////////////////////
 // WHITE BOX TESTING FUNCTIONS

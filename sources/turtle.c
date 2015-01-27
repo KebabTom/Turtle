@@ -36,9 +36,13 @@ int main(int argc, char *argv[])
         case TEST_BLACKBOX :
             runBlackBoxTesting();
             break;
+        case TEST_SYSTEM :
+            runSystemTesting();
+            break;
         case TEST_ALL :
             runWhiteBoxTesting();
             runBlackBoxTesting();
+            runSystemTesting();
             break;
         default :
             fprintf(stderr, "ERROR - invalid output from processInput()\n");
@@ -77,7 +81,7 @@ int checkInput(int argc, char *argv[], int testing)
             printCommandLineError(testing);
             return 0;
         }
-        if(strcmp(argv[2],"all") != 0 && strcmp(argv[2],"white") != 0 && strcmp(argv[2],"black") != 0) {
+        if(strcmp(argv[2],"all") != 0 && strcmp(argv[2],"white") != 0 && strcmp(argv[2],"black") != 0 && strcmp(argv[2],"sys") != 0) {
             printCommandLineError(testing);
             return 0;
         }
@@ -89,7 +93,7 @@ int checkInput(int argc, char *argv[], int testing)
 void printCommandLineError(int testing)
 {
     if(!testing) {
-        fprintf(stderr,"please run the turtle program with one of the command line arguments as follows:\n\nTo parse a .txt file and draw a shape:\n./turtle <FILENAME>.txt\n\nFor testing enter one of the below:\n./turtle test all\n./turtle test white\n./turtle test black\n");
+        fprintf(stderr,"please run the turtle program with one of the command line arguments as follows:\n\nTo parse a .txt file and draw a shape:\n./turtle <FILENAME>.txt\n\nFor testing enter one of the below:\n./turtle test all\n./turtle test white\n./turtle test black\n./turtle test sys\n");
         exit(1);
     }
 }
@@ -109,6 +113,9 @@ int processInput(int argc, char *argv[])
         }
         if(strcmp(argv[2],"black") == 0) {
             return TEST_BLACKBOX;
+        }
+        if(strcmp(argv[2],"sys") == 0) {
+            return TEST_SYSTEM;
         }
         if(strcmp(argv[2],"all") == 0) {
             return TEST_ALL;
@@ -137,12 +144,22 @@ void runBlackBoxTesting()
     runParserBlackBoxTests();
 }
 
+void runSystemTesting()
+{
+    sput_start_testing();
+	  sput_set_output_stream(NULL);
+	  
+    sput_enter_suite("systemTesting(): Checking full system implementation");
+    sput_run_test(systemTesting);
+    sput_leave_suite();
+}
+
 void runCommandLineTests()
 {  
 	  sput_start_testing();
 	  sput_set_output_stream(NULL);	
     
-    sput_enter_suite("testCommandLine(): Checking command line input is processed properly");
+	  sput_enter_suite("testCommandLine(): Checking command line input is processed properly");
     sput_run_test(testCommandLine);
     sput_leave_suite();
     
@@ -154,7 +171,7 @@ void testCommandLine()
 {
     int argc = 1;
     char *argv[3];
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < 3; i++) {
         argv[i] = calloc(TEST_STR_LEN, sizeof(char));
         if(argv[i] == NULL) {
             fprintf(stderr, "ERROR: Unable to calloc space for strings in testCommandLine()\n");
@@ -180,7 +197,7 @@ void testCommandLine()
     strcpy(argv[2], "testwrong");
     sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check OK when 3 arguments and third is neither 'all', 'black' or 'white'");
     
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < 3; i++) {
         free(argv[i]);
     }
 
@@ -356,8 +373,31 @@ void testColourCommand()
     shutDownParsing(TEST_WHITEBOX);
 }
 
-
-
+void systemTesting()
+{
+    setUpForParsing("testingFiles/system_Testing/test_simple_move.txt", TEST_SYSTEM);
+    sput_fail_unless(parse() == 1, "Interpreted simple file ok");
+    sput_fail_unless(getTurtleX() == SCREEN_WIDTH/2, "Turtle in correct x position after simple moves");
+    sput_fail_unless(getTurtleY() == SCREEN_HEIGHT/2, "Turtle in correct y position after simple moves");
+    sput_fail_unless(getTurtleAngle() == 45, "Turtle at correct angle after simple moves");
+    shutDownParsing(TEST_SYSTEM);
+    
+    
+    setUpForParsing("testingFiles/system_Testing/test_while.txt", TEST_SYSTEM);
+    sput_fail_unless(parse() == 1, "Interpreted while loop file ok");
+    sput_fail_unless(getTurtleX() == SCREEN_WIDTH/2, "Turtle in correct x position after while loop moves");
+    sput_fail_unless(getTurtleY() == SCREEN_HEIGHT/2, "Turtle in correct y position after while loop moves");
+    sput_fail_unless(getTurtleAngle() == 90, "Turtle at correct angle after while loop moves");
+    shutDownParsing(TEST_SYSTEM);
+    
+    setUpForParsing("testingFiles/system_Testing/test_polish.txt", TEST_SYSTEM);
+    sput_fail_unless(parse() == 1, "Interpreted reverse polish file ok");
+    sput_fail_unless(getTurtleX() == SCREEN_WIDTH/2, "Turtle in correct x position after long polish expression determining moves");
+    sput_fail_unless(getTurtleY() == SCREEN_HEIGHT/2, "Turtle in correct y position after long polish expression determining moves");
+    sput_fail_unless(getTurtleAngle() == 270, "Turtle at correct angle after after long polish expression determining moves");
+    shutDownParsing(TEST_SYSTEM);
+    
+}
 
 
 

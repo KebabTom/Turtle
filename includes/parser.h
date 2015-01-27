@@ -5,7 +5,7 @@
 
 #define TEST_WITH_SYNTAX_ERRORS 0 //set to 1 to display syntax errors during testing
 
-typedef struct parseHelper *ParseHelper;
+typedef struct parseHandler *ParseHandler;
 typedef struct variable *Variable;
 typedef struct valStack *ValStack;
 typedef struct valNode *ValNode;
@@ -18,47 +18,48 @@ enum mathSymbol {
 } ;
 typedef enum mathSymbol mathSymbol;
 
-// PARSE HELPER FUNCTIONS
-void createParseHelper();
-ParseHelper getParseHelperPointer(ParseHelper pH);
-void initialiseParseHelper(char *filePath, int testing);
-void initialiseVariableList(ParseHelper pH);
+// PARSE HANDLER FUNCTIONS
+void createParseHandler();
+ParseHandler getParseHandlerPointer(ParseHandler pH);
+void initialiseParseHandler(char *filePath, int testing);
+void initialiseVariableList(ParseHandler pH);
 void readInTokensFromFile();
-void freeParseHelper();
+void freeParseHandler();
 
 // PARSING FUNCTIONS
 void setUpForParsing(char *filePath, int testing);
 int  parse();
 void shutDownParsing(int testing);
-int  getToken(ParseHelper pH);
+int  getToken(ParseHandler pH);
 TokenType whatToken(char *token);
 int  checkForVarNum(char * token);
 int  checkForAnyVar(char * token);
-int  processMain(ParseHelper pH);
-int  processInstrctList(ParseHelper pH);
-int  processInstruction(ParseHelper pH);
-int  processVarNum(ParseHelper pH);
-int  processSet(ParseHelper pH);
-int  processPolish(ParseHelper pH);
-int  processOperator(ParseHelper pH);
-int  finishPolish(ParseHelper pH);
-int  processDo(ParseHelper pH);
-int  processWhile(ParseHelper pH);
-int  processColour(ParseHelper pH);
+int  checkForInstruction(char *chkToken);
+int  processMain(ParseHandler pH);
+int  checkForEndOfCode(ParseHandler pH);
+int  processInstructionList(ParseHandler pH);
+int  processInstruction(ParseHandler pH);
+int  processVarNum(ParseHandler pH);
+int  processSet(ParseHandler pH);
+int  processPolish(ParseHandler pH);
+int  processOperator(ParseHandler pH);
+int  finishPolish(ParseHandler pH);
+int  processDo(ParseHandler pH);
+int  processWhile(ParseHandler pH);
+int  processColour(ParseHandler pH);
 
-int checkValidVariable(char c, ParseHelper pH);
-int checkForNumber(char *token, ParseHelper pH);
-int checkVariableAssigned(char c, ParseHelper pH);
-int checkValidOperator(char c, ParseHelper pH);
-int checkForColour(char *token, ParseHelper pH);
+int checkValidVariable(char c, ParseHandler pH);
+int checkForNumber(char *token, ParseHandler pH);
+int checkVariableAssigned(char c, ParseHandler pH);
+int checkValidOperator(char *c, ParseHandler pH);
+int checkForColour(char *token, ParseHandler pH);
 
-void assignValToCurrentVariable(ParseHelper pH);
-void assignValToVariable(ParseHelper pH, char varToSet, double val);
-double getTokenVal(ParseHelper pH);
-double getVariableVal(ParseHelper pH, char c);
+void assignValToVariable(ParseHandler pH, char varToSet, double val);
+double getTokenVal(ParseHandler pH);
+double getVariableVal(ParseHandler pH, char c);
 
 int sameString(char *a, char *b);
-int syntaxError(ParseHelper pH, char *message);
+int syntaxError(ParseHandler pH, char *message);
 
 double doMaths(double a, double b, mathSymbol op);
 
@@ -73,7 +74,7 @@ void freeValStack();
 
 // TESTING FUNCTIONS
 void runParserWhiteBoxTests();
-void testHelperInitialisation();
+void testHandlerInitialisation();
 void testSetAssignment();
 void testValStack();
 void testDOloops();

@@ -9,7 +9,8 @@
 #define NO_TESTING 0
 #define TEST_WHITEBOX 1
 #define TEST_BLACKBOX 2
-#define TEST_ALL 3
+#define TEST_SYSTEM 3
+#define TEST_ALL 4
 
 typedef struct positionStack *PositionStack ;
 typedef struct positionNode *PositionNode ;
@@ -17,7 +18,7 @@ typedef struct turtle *Turtle ;
 
 enum tokenType {
   instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
-  from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar, bkStep,
+  from, to, openBrace, closeBrace, doToken, whileToken, num, noToken, assignedVar, unassignedVar, bkStep,
   moreThan, lessThan, penChange, colour, randomColour, advanceColour
 } ;
 typedef enum tokenType TokenType;
@@ -63,6 +64,12 @@ void applyTurtleColour(Clr colour);
 
 // MATHS FUNCTIONS
 double degreesToRad(int deg);
+
+
+int getTurtleX();
+int getTurtleY();
+int getTurtleAngle();
+Clr getTurtleColour();
 
 // WHITE BOX TESTING FUNCTIONS
 void runInterpreterWhiteBoxTests();

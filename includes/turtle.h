@@ -27,3 +27,7 @@ void testBackstepCommand();
 void testWhileCommand();
 void testPenSwitchCommand();
 void testColourCommand();
+
+// SYSTEM TESTS
+void runSystemTesting();
+void systemTesting();

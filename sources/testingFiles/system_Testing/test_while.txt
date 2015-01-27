@@ -1,0 +1,19 @@
+{
+FD 50
+SET A := 6 2  - ;
+WHILE A > 0 {
+  RT 90
+  FD 100
+  SET A := A -1 + ;
+}
+
+WHILE A < 4 {
+  LT 90
+  FD 100
+  SET A := A 1 + ;
+} 
+RT 180
+FD 50
+RT 180
+RT 450
+}
