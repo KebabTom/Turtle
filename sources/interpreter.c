@@ -254,6 +254,10 @@ void backstep(Turtle t, int steps)
     }
 }
 
+
+//  DRAWING STYLE FUNCTIONS //////////////////////////////////////////
+/*..................................................................*/
+
 void switchPenStatus()
 {
     Turtle t = getTurtlePointer(NULL);
@@ -262,6 +266,30 @@ void switchPenStatus()
         t->penStatus = penDown;
     } else {
         t->penStatus = penUp;
+    }
+}
+
+void advanceTurtleColour()
+{
+    Turtle t = getTurtlePointer(NULL);
+    t->drawColour = (t->drawColour + 1) % NUM_OF_COLOURS;
+    applyTurtleColour(t->drawColour);
+
+}
+
+void setRandomTurtleColour()
+{
+    Turtle t = getTurtlePointer(NULL);
+    t->drawColour = rand()% NUM_OF_COLOURS;
+    applyTurtleColour(t->drawColour);
+}
+
+void applyTurtleColour(Clr colour)
+{
+    Turtle t = getTurtlePointer(NULL);
+    t->drawColour = colour;
+    if(t->drawTurtle) {
+        setDrawColour(t->drawColour);
     }
 }
 

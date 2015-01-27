@@ -21,6 +21,8 @@ struct parseHelper {
   
   double val;
   char varToSet;
+  Clr colour;
+  
   int currentVarIndex;
   mathSymbol currentOperation;
   
@@ -224,6 +226,8 @@ TokenType whatToken(char *token)
     if(sameString(token, "DO"))    {return instruction;}
     if(sameString(token, "BKSTP")) {return instruction;}
     if(sameString(token, "PN"))    {return instruction;}
+    if(sameString(token, "CLR"))   {return instruction;}
+    if(sameString(token, "PN"))    {return instruction;}
     if(sameString(token, "FROM"))  {return from;}
     if(sameString(token, "TO"))    {return to;}
     if(sameString(token, "{"))     {return openBrace;}
@@ -233,6 +237,8 @@ TokenType whatToken(char *token)
     if(sameString(token, "WHILE")) {return instruction;}
     if(sameString(token, "<"))     {return lessThan;}
     if(sameString(token, ">"))     {return moreThan;}
+    if(sameString(token, "RAND"))  {return randomColour;}
+    if(sameString(token, "ADV"))   {return advanceColour;}
     
     if(checkValidOperator(token[0], pH) == 1) {return op;}
     
@@ -366,6 +372,9 @@ int processInstruction(ParseHelper pH)
             switchPenStatus();
         }
         return 1;
+    }
+    if(strcmp(pH->token, "CLR") == 0) {
+        return processColour(pH);
     }
     
     if(strcmp(pH->token, "SET") == 0) {
@@ -584,7 +593,35 @@ int processWhile(ParseHelper pH)
     }
     return 1;
 }
+
+
+int processColour(ParseHelper pH)
+{
+    if(!getToken(pH)) {return 0;}
     
+    if(whatToken(pH->token) == advanceColour) {
+        if(pH->interpret) {
+            advanceTurtleColour();
+        }
+        return 1;
+    }
+    
+    if(whatToken(pH->token) == randomColour) {
+        if(pH->interpret) {
+            setRandomTurtleColour();
+        }
+        return 1;
+    }
+    
+    if(checkForColour(pH->token, pH) ) {
+        if(pH->interpret) {
+            applyTurtleColour(pH->colour);
+        }
+        return 1;
+    }
+    
+    return syntaxError(pH, "invalid token following CLR");
+}
 
 /*
 returns 1 if passed character is within list of potential variables. If not, returns 0.
@@ -645,7 +682,36 @@ int checkValidOperator(char c, ParseHelper pH)
     }
 }
 
-
+int checkForColour(char *token, ParseHelper pH)
+{
+    if(sameString(token, "WHTE")) {
+        pH->colour = white;
+        return 1;
+    }
+    if(sameString(token, "RED")) {
+        pH->colour = red;
+        return 1;
+    }
+    if(sameString(token, "BLUE")) {
+        pH->colour = blue;
+        return 1;
+    }
+    if(sameString(token, "GREEN")) {
+        pH->colour = green;
+        return 1;
+    }
+    if(sameString(token, "YLLW")) {
+        pH->colour = yellow;
+        return 1;
+    }
+    if(sameString(token, "PRPL")) {
+        pH->colour = purple;
+        return 1;
+    }
+    return 0;
+}
+    
+    
 void assignValToCurrentVariable(ParseHelper pH)
 {
     for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {

@@ -117,6 +117,35 @@ void drawLine(int xFrom, int yFrom, int xTo, int yTo)
     }
 }
 
+
+void setDrawColour(Clr colour)
+{
+    SDL_Simplewin sw = getSDL_SimplewinPointer(NULL);
+    
+    switch(colour) {
+        case white :
+            setSDLDrawColour(sw, WHITE_R, WHITE_G, WHITE_B);
+            break;
+        case red :
+            setSDLDrawColour(sw, RED_R, RED_G, RED_B);
+            break;
+        case blue :
+            setSDLDrawColour(sw, BLUE_R, BLUE_G, BLUE_B);
+            break;
+        case green :
+            setSDLDrawColour(sw, GREEN_R, GREEN_G, GREEN_B);
+            break;
+        case yellow :
+            setSDLDrawColour(sw, YELLOW_R, YELLOW_G, YELLOW_B);
+            break;
+        case purple :
+            setSDLDrawColour(sw, PURPLE_R, PURPLE_G, PURPLE_B);
+            break;
+        default :
+            fprintf(stderr, "ERROR - incorrect colour passed to setDrawColour\n");
+    }
+}
+
 // Trivial wrapper to avoid complexities of renderer & alpha channels
 void setSDLDrawColour(SDL_Simplewin sw, Uint8 r, Uint8 g, Uint8 b)
 {

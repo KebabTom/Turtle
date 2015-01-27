@@ -5,6 +5,7 @@
 #define MAX_ANGLE 360
 #define DRAW_SDL_IN_TESTS 0
 
+
 #define NO_TESTING 0
 #define TEST_WHITEBOX 1
 #define TEST_BLACKBOX 2
@@ -17,7 +18,7 @@ typedef struct turtle *Turtle ;
 enum tokenType {
   instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
   from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar, bkStep,
-  moreThan, lessThan, penChange
+  moreThan, lessThan, penChange, colour, randomColour, advanceColour
 } ;
 typedef enum tokenType TokenType;
 
@@ -25,11 +26,6 @@ enum penUpDown {
     penUp, penDown
 } ;
 typedef enum penUpDown PenUpDown;
-
-enum clr {
-    black, white, red, blue, green
-} ;
-typedef enum clr Clr;
 
 
 void setUpForInterpreting(int testing);
@@ -57,7 +53,12 @@ void doAction(TokenType actionType, double val);
 void moveTurtle(int moveLength);
 void storeTurtlePosition(Turtle t);
 void backstep(Turtle t, int steps);
+
+// DRAWING STYLE FUNCTIONS
 void switchPenStatus();
+void advanceTurtleColour();
+void setRandomTurtleColour();
+void applyTurtleColour(Clr colour);
 
 
 // MATHS FUNCTIONS

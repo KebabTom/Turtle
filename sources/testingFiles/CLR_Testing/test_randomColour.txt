@@ -1,0 +1,8 @@
+{
+DO A FROM 1 TO 18 {
+  FD 50
+  RT 20
+  CLR RAND
+  }
+
+}

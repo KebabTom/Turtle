@@ -1,0 +1,11 @@
+{
+CLR WHTE
+FD 50
+RT 60
+CLR RED
+FD 50
+RT 60
+CLR A
+FD 50
+
+}

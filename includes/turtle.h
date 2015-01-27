@@ -1,6 +1,7 @@
 
 
 #include "parser.h"
+#include <time.h>
 
 
 int checkInput(int argc, char *argv[], int testing);
@@ -24,3 +25,5 @@ void testVarNum();
 void testSetCommand();
 void testBackstepCommand();
 void testWhileCommand();
+void testPenSwitchCommand();
+void testColourCommand();

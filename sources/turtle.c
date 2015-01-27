@@ -6,6 +6,7 @@
 int main(int argc, char *argv[])
 
 {
+    srand(time(NULL));
 
     int inputOK = checkInput(argc, argv, NO_TESTING);
     if(!inputOK) {
@@ -214,6 +215,10 @@ void runParserBlackBoxTests()
     sput_run_test(testPenSwitchCommand);
     sput_leave_suite();
     
+    sput_enter_suite("testColourCommand(): Checking test scripts using the CLR command");
+    sput_run_test(testColourCommand);
+    sput_leave_suite();
+    
 	  sput_finish_testing();
 }
 
@@ -332,6 +337,24 @@ void testPenSwitchCommand()
     shutDownParsing(TEST_WHITEBOX);
 }
 
+void testColourCommand()
+{
+    setUpForParsing("testingFiles/CLR_Testing/test_setColour.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed setting draw colour ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/CLR_Testing/test_randomColour.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed setting random draw colour ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/CLR_Testing/test_advanceColour.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed advancing draw colour ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/CLR_Testing/test_incorrectColour.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse if CLR followed by incorrect symbol");
+    shutDownParsing(TEST_WHITEBOX);
+}
 
 
 
