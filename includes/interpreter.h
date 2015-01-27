@@ -10,13 +10,13 @@
 #define TEST_BLACKBOX 2
 #define TEST_ALL 3
 
-typedef struct moveHistoryStack *MoveHistoryStack ;
-typedef struct moveNode *MoveNode ;
+typedef struct positionStack *PositionStack ;
+typedef struct positionNode *PositionNode ;
 typedef struct turtle *Turtle ;
 
 enum tokenType {
   instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
-  from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar
+  from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar, bkStep
 } ;
 typedef enum tokenType TokenType;
 
@@ -40,14 +40,22 @@ Turtle getTurtlePointer(Turtle newTurtle);
 void initialiseTurtle(int testing);
 void freeTurtle();
 
-// MOVE HISTORY STACK FUNCTIONS
-void createMoveHistoryStack();
-MoveHistoryStack getMoveHistoryStackPointer(MoveHistoryStack newStack);
-void freeMoveHistoryStack();
+// POSITION STACK FUNCTIONS
+void createPositionStack();
+PositionStack getPositionStackPointer(PositionStack newStack);
+void freePositionStack();
+
+// POSITION NODE FUNCTIONS
+
+PositionNode newPositionNode();
+void pushToPositionStack(PositionNode pNode);
+PositionNode popFromPositionStack();
 
 // MOVE HANDLING FUNCTIONS
-void doAction(TokenType moveType, double val);
+void doAction(TokenType actionType, double val);
 void moveTurtle(int moveLength);
+void storeTurtlePosition(Turtle t);
+void backstep(Turtle t, int steps);
 
 
 // MATHS FUNCTIONS

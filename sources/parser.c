@@ -217,17 +217,18 @@ TokenType whatToken(char *token)
 {
     ParseHelper pH = getParseHelperPointer(NULL);
     
-    if(sameString(token, "FD")) {return instruction;}
-    if(sameString(token, "LT")) {return instruction;}
-    if(sameString(token, "RT")) {return instruction;}
-    if(sameString(token, "SET")) {return instruction;}
-    if(sameString(token, "DO")) {return instruction;}
-    if(sameString(token, "FROM")) {return from;}
-    if(sameString(token, "TO")) {return to;}
-    if(sameString(token, "{")) {return openBrace;}
-    if(sameString(token, "}")) {return closeBrace;}
-    if(sameString(token, ";")) {return semicolon;}
-    if(sameString(token, ":=")) {return equals;}
+    if(sameString(token, "FD"))    {return instruction;}
+    if(sameString(token, "LT"))    {return instruction;}
+    if(sameString(token, "RT"))    {return instruction;}
+    if(sameString(token, "SET"))   {return instruction;}
+    if(sameString(token, "DO"))    {return instruction;}
+    if(sameString(token, "BKSTP")) {return instruction;}
+    if(sameString(token, "FROM"))  {return from;}
+    if(sameString(token, "TO"))    {return to;}
+    if(sameString(token, "{"))     {return openBrace;}
+    if(sameString(token, "}"))     {return closeBrace;}
+    if(sameString(token, ";"))     {return semicolon;}
+    if(sameString(token, ":="))    {return equals;}
     
     if(checkValidOperator(token[0], pH) == 1) {return op;}
     
@@ -342,6 +343,16 @@ int processInstruction(ParseHelper pH)
         }
         if(pH->interpret) {
             doAction(rt, pH->val);
+        }
+        return 1;
+    }
+    
+    if(strcmp(pH->token, "BKSTP") == 0) {
+        if(!processVarNum(pH) ) {
+            return 0;
+        }
+        if(pH->interpret) {
+            doAction(bkStep, pH->val);
         }
         return 1;
     }

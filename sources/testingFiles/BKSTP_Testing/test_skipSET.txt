@@ -1,0 +1,12 @@
+{
+SET B := 5 ;
+SET C := 1 ;
+  DO A FROM 1 TO 50 {
+  FD B
+  FD C
+  SET B := B 5 + ;
+  SET C := C 1 + ;
+  BKSTP 1
+  RT 71
+  }
+}

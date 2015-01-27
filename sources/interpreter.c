@@ -9,29 +9,28 @@
 struct turtle {
     double x, y;
     int angle;
-    int moveLength;
     PenUpDown penStatus;
     Clr drawColour;
     
     int drawTurtle;
 } ;
 
-struct moveHistoryStack {
-    int numOfMoves;
-    MoveNode top;
+struct positionStack {
+    int numOfPositions;
+    PositionNode top;
 } ;
 
-struct moveNode {
-    TokenType moveType;
-    double val;
-    MoveNode next;
+struct positionNode {
+    double x, y;
+    int angle;
+    PositionNode next;
 } ;
 
 void setUpForInterpreting(int testing)
 {
     createTurtle();
     initialiseTurtle(testing);
-    createMoveHistoryStack();
+    createPositionStack();
     
     Turtle t = getTurtlePointer(NULL);
     if(t->drawTurtle) {
@@ -46,7 +45,7 @@ void shutDownInterpreting()
         shutDownDisplay();
     }
     freeTurtle();
-    freeMoveHistoryStack();
+    freePositionStack();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,10 +77,11 @@ void initialiseTurtle(int testing)
 {
     Turtle t = getTurtlePointer(NULL);
     
+      //start turtle halfway across and halfway down the screen
     t->x = SCREEN_WIDTH/2.0;
     t->y = SCREEN_HEIGHT/2.0;
+    
     t->angle = 0;
-    t->moveLength = 0;
     t->penStatus = penDown;
     t->drawColour = white;
     
@@ -99,62 +99,103 @@ void freeTurtle()
 }
     
 //////////////////////////////////////////////////////////////////////////////////////////////
-// MOVE HISTORY STACK FUNCTIONS
+// POSITION STACK FUNCTIONS
 ///////////////////////////////
 
-void createMoveHistoryStack()
+void createPositionStack()
 {
-    MoveHistoryStack newStack = (MoveHistoryStack) malloc(sizeof(struct moveHistoryStack));
+    PositionStack newStack = (PositionStack) malloc(sizeof(struct positionStack));
     if(newStack == NULL) {
-        fprintf(stderr, "ERROR - unable to malloc space for moveHistoryStack in createMoveHistoryStack()\n");
+        fprintf(stderr, "ERROR - unable to malloc space for PositionStack in createPositionStack()\n");
         exit(1);
     }
     
     newStack->top = NULL;
-    newStack->numOfMoves = 0;
-    getMoveHistoryStackPointer(newStack);
+    newStack->numOfPositions = 0;
+    getPositionStackPointer(newStack);
 }
 
-MoveHistoryStack getMoveHistoryStackPointer(MoveHistoryStack newStack)
+PositionStack getPositionStackPointer(PositionStack newStack)
 {
-    static MoveHistoryStack mStack;
+    static PositionStack pStack;
     if(newStack != NULL) {
-        mStack = newStack;
+        pStack = newStack;
     }
     
-    return mStack;
+    return pStack;
 }
 
-void freeMoveHistoryStack()
+void freePositionStack()
 {
-    MoveHistoryStack mStack = getMoveHistoryStackPointer(NULL);
+    PositionStack pStack = getPositionStackPointer(NULL);
     
-    for(int i = 0; i < mStack->numOfMoves; i++) {
-        MoveNode tmp = mStack->top;
-        mStack->top = mStack->top->next;
+    for(int i = 0; i < pStack->numOfPositions; i++) {
+        PositionNode tmp = pStack->top;
+        pStack->top = pStack->top->next;
         free(tmp);
     }
     
-    free(mStack);
+    free(pStack);
+}
+
+
+//  POSITION NODE FUNCTIONS  //////////////////////////////////////////
+/*...................................................................*/
+
+PositionNode newPositionNode()
+{
+    PositionNode newNode = (PositionNode) malloc (sizeof(struct positionNode));
+    if(newNode == NULL) {
+        fprintf(stderr, "ERROR - malloc failed for PositionNode in newPositionNode()\n");
+        exit(1);
+    }
+    newNode->next = NULL;
+    return newNode;
+}
+
+void pushToPositionStack(PositionNode pNode)
+{
+    PositionStack pStack = getPositionStackPointer(NULL);
+    pNode->next = pStack->top;
+    pStack->top = pNode;
+    pStack->numOfPositions++;
+}
+
+PositionNode popFromPositionStack()
+{
+    PositionStack pStack = getPositionStackPointer(NULL);
+    if(pStack->numOfPositions > 0) {
+        PositionNode poppedNode = pStack->top;
+        pStack->top = pStack->top->next;
+        pStack->numOfPositions--;
+        return poppedNode;
+    }
+    return NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////
 // MOVE PROCESSING FUNCTIONS
 ////////////////////////////
 
-void doAction(TokenType moveType, double val)
+void doAction(TokenType actionType, double val)
 {
     Turtle t = getTurtlePointer(NULL);
     
-    switch (moveType) {
+    switch (actionType) {
         case rt :
+            storeTurtlePosition(t);
             t->angle = (t->angle + (int) val) % MAX_ANGLE;
             break;
         case lt :
+            storeTurtlePosition(t);
             t->angle = (t->angle + (MAX_ANGLE - (int) val) ) % MAX_ANGLE;
             break;
         case fd :
+            storeTurtlePosition(t);
             moveTurtle(val);
+            break;
+        case bkStep :
+            backstep(t, val);
             break;
         default :
             fprintf(stderr,"ERROR - incorrect token passed to doAction()\n");
@@ -189,6 +230,30 @@ void moveTurtle(int moveLength)
         moveDistance+=stepLength;
     }
 }
+
+void storeTurtlePosition(Turtle t)
+{
+    PositionNode pNode = newPositionNode();
+    pNode->x = t->x;
+    pNode->y = t->y;
+    pNode->angle = t->angle;
+    
+    pushToPositionStack(pNode);
+}
+
+void backstep(Turtle t, int steps)
+{
+    for(int i = 0; i < steps; i++) {
+        PositionNode pNode = popFromPositionStack();
+        if(pNode != NULL) {
+            t->x = pNode->x;
+            t->y = pNode->y;
+            t->angle = pNode->angle;
+            free(pNode);
+        }
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////
 // MATHS FUNCTIONS
