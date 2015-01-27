@@ -1,0 +1,12 @@
+{
+SET B := 3 ;
+FD 40
+RT 45
+FD 20
+BKSTP A
+LT 45
+FD 20
+BKSTP 3
+RT 18
+}
+  

@@ -1,0 +1,11 @@
+{
+FD 20
+SET A := 3 ;
+WHILE A < 10 {
+  RT 20
+  FD 20
+  SET A := A 1 + ;
+  FD 20
+  }
+FD 25
+}

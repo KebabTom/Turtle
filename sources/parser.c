@@ -229,6 +229,9 @@ TokenType whatToken(char *token)
     if(sameString(token, "}"))     {return closeBrace;}
     if(sameString(token, ";"))     {return semicolon;}
     if(sameString(token, ":="))    {return equals;}
+    if(sameString(token, "WHILE")) {return instruction;}
+    if(sameString(token, "<"))     {return lessThan;}
+    if(sameString(token, ">"))     {return moreThan;}
     
     if(checkValidOperator(token[0], pH) == 1) {return op;}
     
@@ -363,6 +366,10 @@ int processInstruction(ParseHelper pH)
     
     if(strcmp(pH->token, "DO") == 0) {
         return processDo(pH);
+    }
+    
+    if(strcmp(pH->token, "WHILE") == 0) {
+        return processWhile(pH);
     }
     else {
         fprintf(stderr,"ERROR - invalid token (%s) passed to processInstruction()\n", pH->token);
@@ -516,6 +523,55 @@ int processDo(ParseHelper pH)
     return 1;
 
 }
+
+int processWhile(ParseHelper pH)
+{
+    if(!getToken(pH)) {return 0;}
+    if(whatToken(pH->token) != assignedVar) {
+        return syntaxError(pH, "unassigned variable in WHILE command declaration");
+    }
+    char loopVariable = pH->token[0];
+    
+    if(!getToken(pH)) {return 0;}
+    TokenType loopType = whatToken(pH->token);
+    
+    if(loopType != lessThan && loopType != moreThan) {
+        return syntaxError(pH, "missing comparator in WHILE command");
+    }
+    
+    if(!getToken(pH)) {return 0;}
+    if(!checkForVarNum(pH->token)) {
+        return syntaxError(pH, "invalid variable/number following operator in WHILE command");
+    }
+    
+    double loopTargetVal = getTokenVal(pH);
+    int doLoopStartIndex = pH->currentTokenIndex;
+    
+    if(!getToken(pH)) {return 0;}
+    if(whatToken(pH->token) != openBrace) {
+        return syntaxError(pH, "missing opening brace following WHERE command");
+    }
+    
+    if(loopType == lessThan) {
+        while(getVariableVal(pH, loopVariable) < loopTargetVal) {
+            pH->currentTokenIndex = doLoopStartIndex;
+            
+            if(!processInstrctList(pH)) {
+                return syntaxError(pH, "WHERE error");
+            }
+        }
+    } else {
+        while(getVariableVal(pH, loopVariable) > loopTargetVal) {
+            pH->currentTokenIndex = doLoopStartIndex;
+            
+            if(!processInstrctList(pH)) {
+                return syntaxError(pH, "WHERE error");
+            }
+        }
+    }
+    return 1;
+}
+    
 
 /*
 returns 1 if passed character is within list of potential variables. If not, returns 0.

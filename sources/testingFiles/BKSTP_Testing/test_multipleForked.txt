@@ -1,0 +1,12 @@
+{
+DO A FROM 1 TO 20 {
+  FD 40
+  RT 45
+  FD 20
+  BKSTP 2
+  LT 45
+  FD 20
+  BKSTP 3
+  RT 18
+  }
+}

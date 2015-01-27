@@ -1,0 +1,10 @@
+{
+FD 1
+SET B := 30
+WHILE B > 25 
+  LT 5
+  FD 10
+  B := B 1 - ;
+  }
+RT 20
+}

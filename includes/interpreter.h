@@ -16,7 +16,8 @@ typedef struct turtle *Turtle ;
 
 enum tokenType {
   instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
-  from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar, bkStep
+  from, to, openBrace, closeBrace, DO, num, noToken, assignedVar, unassignedVar, bkStep,
+  moreThan, lessThan
 } ;
 typedef enum tokenType TokenType;
 

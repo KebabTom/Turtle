@@ -202,6 +202,14 @@ void runParserBlackBoxTests()
     sput_run_test(testSetCommand);
     sput_leave_suite();
     
+    sput_enter_suite("testBackstepCommand(): Checking test scripts using the BKSTP command");
+    sput_run_test(testBackstepCommand);
+    sput_leave_suite();
+    
+    sput_enter_suite("testWhileCommand(): Checking test scripts using the WHILE command");
+    sput_run_test(testWhileCommand);
+    sput_leave_suite();
+    
 	  sput_finish_testing();
 }
 
@@ -267,8 +275,47 @@ void testSetCommand()
     shutDownParsing(TEST_WHITEBOX);
 }
 
+void testBackstepCommand()
+{
+    setUpForParsing("testingFiles/BKSTP_Testing/test_simpleBKSTP.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed simple BKSTP command ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/BKSTP_Testing/test_overflowBKSTP.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed BKSTP ok when there are more BKSTP commands than actions");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/BKSTP_Testing/test_skipSET.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed BKSTP when separated from action by SET commands ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/BKSTP_Testing/test_multipleForked.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed multiple forked BKSTP commands ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/BKSTP_Testing/test_unassignedVarBKSTP.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse BKSTP when used with unassigned variable");
+    shutDownParsing(TEST_WHITEBOX);
+}
 
-
+void testWhileCommand()
+{
+    setUpForParsing("testingFiles/WHILE_Testing/test_simpleWHILE.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed simple WHILE loop ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/WHILE_Testing/test_nestedWHILE.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 1, "Parsed nested WHILE loop ok");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/WHILE_Testing/test_unassignedWHILE.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse WHILE loop set up with unassigned variable");
+    shutDownParsing(TEST_WHITEBOX);
+    
+    setUpForParsing("testingFiles/WHILE_Testing/test_noBraceWHILE.txt", TEST_WHITEBOX);
+    sput_fail_unless(parse() == 0, "Will not parse WHILE loop with no opening brace");
+    shutDownParsing(TEST_WHITEBOX);
+}
 
 
 

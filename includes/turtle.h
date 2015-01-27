@@ -22,3 +22,5 @@ void runParserBlackBoxTests();
 void testSyntaxErrors();
 void testVarNum();
 void testSetCommand();
+void testBackstepCommand();
+void testWhileCommand();

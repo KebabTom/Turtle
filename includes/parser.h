@@ -43,6 +43,8 @@ int  processPolish(ParseHelper pH);
 int  processOperator(ParseHelper pH);
 int  finishPolish(ParseHelper pH);
 int  processDo(ParseHelper pH);
+int processWhile(ParseHelper pH);
+void skipLoop(ParseHelper pH);
 
 int checkValidVariable(char c, ParseHelper pH);
 int checkForNumber(char *token, ParseHelper pH);
