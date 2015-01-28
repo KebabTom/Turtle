@@ -6,6 +6,12 @@
 #endif
 
 
+struct variable {
+    
+    char varName;
+    double contents;
+    int assigned;
+} ;
 
 
 struct turtle {
@@ -15,6 +21,7 @@ struct turtle {
     Clr drawColour;
     
     int drawTurtle;
+    Variable varList[NUMBER_OF_VARIABLES];
 } ;
 
 struct positionStack {
@@ -28,10 +35,25 @@ struct positionNode {
     PositionNode next;
 } ;
 
-void setUpForInterpreting(int testing)
+struct valStack {
+
+  int numOfVals;
+  ValNode top;
+} ;
+
+struct valNode {
+
+  double val;
+  ValNode next;
+} ;
+
+////  SETUP/SHUTDOWN FUNCTIONS //////////////////////////////////////////////////////
+/*..........................................................................*/
+
+void setUpForInterpreting(int testMode)
 {
     createTurtle();
-    initialiseTurtle(testing);
+    initialiseTurtle(testMode);
     createPositionStack();
     
     Turtle t = getTurtlePointer(NULL);
@@ -75,7 +97,7 @@ Turtle getTurtlePointer(Turtle newTurtle)
     return t;
 }
 
-void initialiseTurtle(int testing)
+void initialiseTurtle(int testMode)
 {
     Turtle t = getTurtlePointer(NULL);
     
@@ -87,16 +109,35 @@ void initialiseTurtle(int testing)
     t->penStatus = penDown;
     t->drawColour = white;
     
-    if(testing) {
-        t->drawTurtle = DRAW_SDL_IN_TESTS;
-    } else {
+    initialiseVariableList(t);
+    
+    if(testMode == NO_TESTING) {
         t->drawTurtle = 1;
+    } else {
+        t->drawTurtle = DRAW_SDL_IN_TESTS;
     }
 }
-    
+
+void initialiseVariableList(Turtle t)
+{
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        t->varList[i] = (Variable) malloc(sizeof(struct variable));
+        if(t->varList[i] == NULL) {
+            fprintf(stderr, "ERROR - unable to malloc space for variable structure in initialiseVariableList()");
+            exit(1);
+        }
+        t->varList[i]->varName = 'A'+i;
+        t->varList[i]->assigned = 0;
+    }
+}
+
 void freeTurtle()
 {
     Turtle t = getTurtlePointer(NULL);
+    
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        free(t->varList[i]);
+    }
     free(t);
 }
     
@@ -174,6 +215,95 @@ PositionNode popFromPositionStack()
     }
     return NULL;
 }
+
+
+///////////////////////////////////////////////////////////////////
+// VAL STACK FUNCTIONS
+/////////////////////////
+
+void createValStack()
+{
+    ValStack newStack = (ValStack) malloc(sizeof(struct valStack));
+    if(newStack == NULL) {
+        fprintf(stderr, "ERROR - unable to malloc space for valstack in createValStack()\n");
+        exit(1);
+    }
+    
+    newStack->top = NULL;
+    newStack->numOfVals = 0;
+    getValStackPointer(newStack);
+}
+
+ValStack getValStackPointer(ValStack newStack)
+{
+    static ValStack vStack;
+    if(newStack != NULL) {
+        vStack = newStack;
+    }
+    
+    return vStack;
+}
+
+void pushToValStack(double val)
+{
+    ValStack vStack = getValStackPointer(NULL);
+    
+    ValNode vN = newValNode();
+    vN->val = val;
+    vN->next = vStack->top;
+    vStack->numOfVals++;
+    vStack->top = vN;
+}
+
+
+ValNode newValNode()
+{
+    ValNode newNode = (ValNode) malloc(sizeof(struct valNode));
+    if(newNode == NULL) {
+        fprintf(stderr, "ERROR - Unable to malloc space for val node in newValNode()\n");
+        exit(1);
+    }
+    
+    newNode->next = NULL;
+    return newNode;
+}
+
+int popFromValStack(double *poppedVal)
+{
+    ValStack vStack = getValStackPointer(NULL);
+    
+    if(vStack->numOfVals > 0) {
+        *poppedVal = vStack->top->val;
+        ValNode tmp = vStack->top;
+        vStack->top = vStack->top->next;
+        free(tmp);
+        vStack->numOfVals--;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int getNumberOfValsOnStack()
+{
+    return getValStackPointer(NULL)->numOfVals;
+}
+    
+void freeValStack()
+{
+    ValStack vStack = getValStackPointer(NULL);
+    
+    for(int i = 0; i < vStack->numOfVals; i++) {
+        ValNode tmp = vStack->top;
+        vStack->top = vStack->top->next;
+        free(tmp);
+    }
+    
+    free(vStack);
+}
+
+
+
 
 ///////////////////////////////////////////////////////////////////////
 // MOVE PROCESSING FUNCTIONS
@@ -304,6 +434,106 @@ double degreesToRad(int deg)
     return (double) deg * (M_PI/180.0); //multiply angle in degrees by pi/180 to give angle in radians
 }
 
+double doMaths(double a, double b, mathSymbol op)
+{
+    switch(op) {
+        case add :
+            return a+b;
+        case subtract :
+            return a-b;
+        case multiply :
+            return a*b;
+        case divide :
+            return a/b;
+        default :
+            fprintf(stderr, "ERROR - invalid maths operator passed to doMaths()\n");
+            exit(1);
+    }
+}
+
+///// INFORMATION RETURNING FUNCTIONS ////////////////////////////////
+/*..................................................................*/
+
+double getVariableVal(char c)
+{
+    Turtle t = getTurtlePointer(NULL);
+    
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        if(t->varList[i]->varName == c) {
+            return t->varList[i]->contents;
+        }
+    }
+    
+    fprintf(stderr, "ERROR - attempted to extract contents of variable not in varList in getTokenVal()\n");
+    exit(1);
+}
+
+/*
+returns 1 if passed character is within list of potential variables. If not, returns 0.
+*/
+int checkValidVariable(char c)
+{
+    Turtle t = getTurtlePointer(NULL);
+    
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        if(t->varList[i]->varName == c) {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+// if variable is marked as assigned, returns 1 and updates the parseHandler's current val to the variable's value (if interpreting)
+int checkVariableAssigned(char c, int interpret, double *valToSet)
+{
+    Turtle t = getTurtlePointer(NULL);
+    
+    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
+        if(t->varList[i]->varName == c) {
+            if(t->varList[i]->assigned == 1) {
+                if(interpret) {
+                    *valToSet = t->varList[i]->contents;
+                }
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+int checkForNumber(char *token, double *valToSet)
+{
+    char *remainder;
+    *valToSet = strtod(token, &remainder);
+    if(remainder[0] != '\0') {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+// if indicated variable existsand returns 1, else returns 0
+// if parser is set in interpret mode, assigns value to variable
+void assignValToVariable(char varToSet, double val, int interpret)
+{
+    Turtle t = getTurtlePointer(NULL);
+    
+    int foundVar = 0;
+    for(int i = 0; i < NUMBER_OF_VARIABLES && foundVar == 0; i++) {
+        if(t->varList[i]->varName == varToSet) {
+            foundVar = 1;
+            t->varList[i]->assigned = 1;
+            if(interpret) {
+                t->varList[i]->contents = val;
+            }
+        }
+    }
+    if(foundVar != 1) {
+        fprintf(stderr, "ERROR - unable to locate variable in assignValToVariable()\n");
+        exit(1);
+    }
+}
 
 int getTurtleX()
 {
@@ -342,6 +572,10 @@ void runInterpreterWhiteBoxTests()
     
     sput_enter_suite("testTurtleActions(): Checking actions are properly carried out");
     sput_run_test(testTurtleActions);
+    sput_leave_suite();
+    
+    sput_enter_suite("testValStack(): Testing pushing and popping from Val Stack");
+    sput_run_test(testValStack);
     sput_leave_suite();
 
 	  sput_finish_testing();
@@ -392,6 +626,33 @@ void testTurtleActions()
     shutDownInterpreting();
 }
 
+
+void testValStack()
+{
+    createValStack();
+    pushToValStack(3);
+    pushToValStack(12.4);
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 2, "After pushing two values to stack, number of items in stack is 2");
+    freeValStack();
+    
+    createValStack();
+    pushToValStack(25);
+    pushToValStack(13);
+    pushToValStack(20);
+    double d = 0;
+    sput_fail_unless(popFromValStack(&d) == 1 && (int) d == 20, "Stack successfully pops value from stack");
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 2, "After pushing 3 values and popping 1, number of items in stack is 2");
+    
+    popFromValStack(&d);
+    popFromValStack(&d);
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 0, "After pushing 3 values and popping 3, number of items in stack is 0");
+    sput_fail_unless((int) d == 25, "Successfully pops 3 values from stack");
+    
+    sput_fail_unless(popFromValStack(&d) == 0, "Does not alow pop from empty stack");
+    sput_fail_unless((int) d == 25, "Target value unchanged after pop from empty stack");
+    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 0, "Items in stack is still 0 after pop from empty stack");
+    freeValStack();
+}
 
 
 

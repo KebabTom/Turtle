@@ -4,9 +4,10 @@
 #include <time.h>
 
 
-int checkInput(int argc, char *argv[], int testing);
-void printCommandLineError(int testing);
-int processInput(int argc, char *argv[]);
+void runFullProgram(char *filePath);
+int checkInput(int argc, char *argv[], int testMode);
+void exitWithCommandLineError();
+int getStartMode(int argc, char *argv[]);
 
 
 

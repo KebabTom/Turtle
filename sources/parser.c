@@ -1,11 +1,5 @@
 #include "../includes/parser.h"
 
-struct variable {
-    
-    char varName;
-    double contents;
-    int assigned;
-} ;
 
 struct parseHandler {
 
@@ -25,23 +19,10 @@ struct parseHandler {
   
   mathSymbol currentOperation;
   
-  Variable varList[NUMBER_OF_VARIABLES];
-  
   int showSyntaxErrors;
   int interpret;
 } ;
 
-struct valStack {
-
-  int numOfVals;
-  ValNode top;
-} ;
-
-struct valNode {
-
-  double val;
-  ValNode next;
-} ;
 
 
 
@@ -71,7 +52,7 @@ ParseHandler getParseHandlerPointer(ParseHandler pH)
     return newHandler;
 }
 
-void initialiseParseHandler(char *filePath, int testing)
+void initialiseParseHandler(char *filePath, int testMode)
 {
     ParseHandler pH = getParseHandlerPointer(NULL);
     
@@ -82,45 +63,26 @@ void initialiseParseHandler(char *filePath, int testing)
     pH->currentTokenIndex = 0;
     pH->numberOfTokens = 0;
     
-    initialiseVariableList(pH);
-    
-    if(testing) {
-        pH->showSyntaxErrors = TEST_WITH_SYNTAX_ERRORS;
-    } else {
+    if(testMode == NO_TESTING) {
         pH->showSyntaxErrors = 1;
+    } else {
+        pH->showSyntaxErrors = TEST_WITH_SYNTAX_ERRORS;
     }
     
-    if(testing == TEST_WHITEBOX) {
-        pH->interpret = 0;
-    } else {
+    if(testMode == NO_TESTING) {
         pH->interpret = 1;
+    } else {
+        pH->interpret = 0;
     }
     
     pH->tokenArray = NULL;
 
 }
 
-void initialiseVariableList(ParseHandler pH)
-{
-    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
-        pH->varList[i] = (Variable) malloc(sizeof(struct variable));
-        if(pH->varList[i] == NULL) {
-            fprintf(stderr, "ERROR - unable to malloc space for variable structure in initialiseVariableList()");
-            exit(1);
-        }
-        pH->varList[i]->varName = 'A'+i;
-        pH->varList[i]->assigned = 0;
-    }
-}
-    
 
 void freeParseHandler()
 {
     ParseHandler pH = getParseHandlerPointer(NULL);
-    
-    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
-        free(pH->varList[i]);
-    }
     
     fclose(pH->tokenFP);
     
@@ -137,45 +99,43 @@ void freeParseHandler()
 // PARSING FUNCTIONS
 ////////////////////
 
-void setUpForParsing(char *filePath, int testing)
+void setUpForParsing(char *filePath, int testMode)
 {
     createParseHandler();
-    initialiseParseHandler(filePath, testing);
+    initialiseParseHandler(filePath, testMode);
     createValStack();
+    setUpForInterpreting(testMode);
     
-    switch(testing) {
-        case TEST_WHITEBOX :
-            break;
-        case TEST_BLACKBOX :
-            setUpForInterpreting(TEST_WHITEBOX);
-            break;
-        default :
-            setUpForInterpreting(testing);
-    }
 }
 
-    
-    
-    
-
-int parse()
+int parse(char * filePath, int testMode)
 {
+    setUpForParsing(filePath, testMode);
     
     ParseHandler pH = getParseHandlerPointer(NULL);
+    pH->interpret = 0;
     
     int parsed = processMain(pH);
-    
     return parsed;
 }
 
-void shutDownParsing(int testing)
+int interpret(char *filePath, int testMode)
+{
+    
+    setUpForParsing(filePath, testMode);
+    
+    ParseHandler pH = getParseHandlerPointer(NULL);
+    pH->interpret = 1;
+    
+    int interpreted = processMain(pH);
+    return interpreted;
+}
+
+void shutDownParsing()
 {
     freeValStack();
     freeParseHandler();
-    
-    if(testing != TEST_WHITEBOX) {
-        shutDownInterpreting();
-    }
+    shutDownInterpreting();
 }
 
 int getToken(ParseHandler pH)
@@ -191,6 +151,23 @@ int getToken(ParseHandler pH)
     pH->numberOfTokens++;
     pH->currentTokenIndex = pH->numberOfTokens-1;
     
+    
+    resizeTokenArray(pH);
+    
+    if(fscanf(pH->tokenFP, "%s", pH->tokenArray[pH->numberOfTokens-1]) != 1) {
+        if(fgetc(pH->tokenFP) == EOF) {
+            return syntaxError(pH, "TOKEN closing braces do not match opening braces. Are you missing a closing brace?");
+        }
+        return syntaxError(pH, "invalid character in file");
+    } else {
+        pH->token = pH->tokenArray[pH->numberOfTokens-1];
+    }
+    //printf("%s\n", pH->token);
+    return 1;
+}
+
+void resizeTokenArray(ParseHandler pH)
+{
     pH->tokenArray = (char**)realloc(pH->tokenArray,pH->numberOfTokens * sizeof(char*));
     if(pH->tokenArray == NULL) {
         fprintf(stderr, "ERROR - realloc failed in getToken()\n");
@@ -201,18 +178,8 @@ int getToken(ParseHandler pH)
         fprintf(stderr, "ERROR - malloc failed in getToken()\n");
         exit(1);
     }
-        
-    if(fscanf(pH->tokenFP, "%s", pH->tokenArray[pH->numberOfTokens-1]) != 1) {
-        if(fgetc(pH->tokenFP) == EOF) {
-            return syntaxError(pH, "TOKEN closing braces do not match opening braces. Are you missing a closing brace?");
-        }
-        return syntaxError(pH, "invalid token");
-    } else {
-        pH->token = pH->tokenArray[pH->numberOfTokens-1];
-    }
-    //printf("%s\n", pH->token);
-    return 1;
 }
+        
 
 TokenType whatToken(char *token)
 {
@@ -241,15 +208,15 @@ TokenType whatToken(char *token)
     if(checkValidOperator(token, pH) == 1) {return op;}
     
     if(strlen(token) == 1) {
-        if(checkValidVariable(token[0], pH)) {
-            if(checkVariableAssigned(token[0], pH)) {
+        if(checkValidVariable(token[0])) {
+            if(checkVariableAssigned(token[0], pH->interpret, &pH->val)) {
                 return assignedVar;
             } else {
                 return unassignedVar;
             }
         }
     }
-    if(checkForNumber(token, pH)) {return num;}
+    if(checkForNumber(token, &pH->val)) {return num;}
     
     else {return noToken;}
 }
@@ -304,7 +271,7 @@ int processMain(ParseHandler pH)
         if(pH->hangingBraces == 0) {
             return checkForEndOfCode(pH);
         } else {
-            return processInstructionList(pH);
+            return 1;
         }
     } else {
         return 0;
@@ -415,7 +382,7 @@ int processSet(ParseHandler pH)
     if(!processPolish(pH)) {
         return 0;
     }
-    assignValToVariable(pH, varToSet, pH->val);
+    assignValToVariable(varToSet, pH->val, pH->interpret);
     return 1;
     
 }
@@ -497,7 +464,7 @@ int processDo(ParseHandler pH)
     }
     
     int loopVal = (int) getTokenVal(pH);
-    assignValToVariable(pH, loopVariable, (double)loopVal);
+    assignValToVariable(loopVariable, (double)loopVal, pH->interpret);
     
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != to) {
@@ -509,13 +476,16 @@ int processDo(ParseHandler pH)
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
     
+    
     int loopEndingVal = (int) getTokenVal(pH);
     
     // record token index to restart loop
     int doLoopStartIndex = pH->currentTokenIndex;
     
+    
+    
     for(int i = loopVal; i <= loopEndingVal; i++) {
-        assignValToVariable(pH, loopVariable, (double)i);
+        assignValToVariable(loopVariable, (double)i, pH->interpret);
         pH->currentTokenIndex = doLoopStartIndex;
         
         
@@ -552,8 +522,21 @@ int processWhile(ParseHandler pH)
     // record token index to restart loop
     int loopStartIndex = pH->currentTokenIndex;
     
+    if(!pH->interpret) {
+        return skipLoop(pH);
+    }
+    
+    return processWhileLoop(pH, loopType, loopVariable, loopTargetVal, loopStartIndex);
+}
+
+// processes while loop until while condition is met. If consition is initially unset, parses loop once but doesn't set any values
+int processWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, double loopTargetVal, int loopStartIndex)
+{
     if(loopType == lessThan) {
-        while(getVariableVal(pH, loopVariable) < loopTargetVal) {
+        if(getVariableVal(loopVariable) > loopTargetVal) {
+            return skipLoop(pH);
+        }
+        while(getVariableVal(loopVariable) < loopTargetVal) {
             pH->currentTokenIndex = loopStartIndex;
             
             if(!processInstructionList(pH)) {
@@ -561,7 +544,10 @@ int processWhile(ParseHandler pH)
             }
         }
     } else {
-        while(getVariableVal(pH, loopVariable) > loopTargetVal) {
+        if(getVariableVal(loopVariable) < loopTargetVal) {
+            return skipLoop(pH);
+        }
+        while(getVariableVal(loopVariable) > loopTargetVal) {
             pH->currentTokenIndex = loopStartIndex;
             
             if(!processInstructionList(pH)) {
@@ -572,6 +558,24 @@ int processWhile(ParseHandler pH)
     return 1;
 }
 
+// parses a loop but doesn't alter any values from SET commands within the loop. Used when not interpretting or when interpreter comes accross a loop it should never enter
+int skipLoop(ParseHandler pH)
+{
+    int returnToInterpretting;
+    if(pH->interpret) {
+        returnToInterpretting = 1;
+        pH->interpret = 0;
+    } else {
+        returnToInterpretting = 0;
+    }
+    
+    int successfulParse = processInstructionList(pH);
+    
+    pH->interpret = returnToInterpretting;
+    
+    return successfulParse;
+}
+    
 
 int processColour(ParseHandler pH)
 {
@@ -601,43 +605,9 @@ int processColour(ParseHandler pH)
     return syntaxError(pH, "invalid token following CLR");
 }
 
-/*
-returns 1 if passed character is within list of potential variables. If not, returns 0.
-*/
-int checkValidVariable(char c, ParseHandler pH)
-{
-    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
-        if(pH->varList[i]->varName == c) {
-            return 1;
-        }
-    }
-    
-    return 0;
-}
 
-int checkForNumber( char *token, ParseHandler pH)
-{
-    char *remainder;
-    pH->val = strtod(token, &remainder);
-    if(remainder[0] != '\0') {
-        return 0;
-    } else {
-        return 1;
-    }
-}
 
-int checkVariableAssigned(char c, ParseHandler pH)
-{
-    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
-        if(pH->varList[i]->varName == c) {
-            if(pH->varList[i]->assigned == 1) {
-                pH->val = pH->varList[i]->contents;
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
+
 
 int checkValidOperator(char *c, ParseHandler pH)
 {
@@ -692,42 +662,15 @@ int checkForColour(char *token, ParseHandler pH)
 }
 
 
-void assignValToVariable(ParseHandler pH, char varToSet, double val)
-{
-    int foundVar = 0;
-    for(int i = 0; i < NUMBER_OF_VARIABLES && foundVar == 0; i++) {
-        if(pH->varList[i]->varName == varToSet) {
-            foundVar = 1;
-            pH->varList[i]->contents = val;
-            pH->varList[i]->assigned = 1;
-        }
-    }
-    if(foundVar != 1) {
-        fprintf(stderr, "ERROR - unable to locate variable in assignValToVariable()\n");
-        exit(1);
-    }
-}
 
 double getTokenVal(ParseHandler pH)
 {
-    if(checkForNumber(pH->token, pH) ) {
+    if(checkForNumber(pH->token, &pH->val) ) {
         return pH->val;
     }
-    return getVariableVal(pH, pH->token[0]);
+    return getVariableVal(pH->token[0]);
 }
 
-double getVariableVal(ParseHandler pH, char c)
-{
-
-    for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
-        if(pH->varList[i]->varName == c) {
-            return pH->varList[i]->contents;
-        }
-    }
-    
-    fprintf(stderr, "ERROR - attempted to extract contents of variable not in varList in getTokenVal()\n");
-    exit(1);
-}
     
 int sameString(char *a, char *b)
 {
@@ -751,109 +694,6 @@ int syntaxError(ParseHandler pH, char *message)
 // VARIABLE HANDLING FUNCTIONS
 //////////////////////////////
 
-double doMaths(double a, double b, mathSymbol op)
-{
-    switch(op) {
-        case add :
-            return a+b;
-        case subtract :
-            return a-b;
-        case multiply :
-            return a*b;
-        case divide :
-            return a/b;
-        default :
-            fprintf(stderr, "ERROR - invalid maths operator passed to doMaths()\n");
-            exit(1);
-    }
-}
-
-///////////////////////////////////////////////////////////////////
-// VAL STACK FUNCTIONS
-/////////////////////////
-
-void createValStack()
-{
-    ValStack newStack = (ValStack) malloc(sizeof(struct valStack));
-    if(newStack == NULL) {
-        fprintf(stderr, "ERROR - unable to malloc space for valstack in createValStack()\n");
-        exit(1);
-    }
-    
-    newStack->top = NULL;
-    newStack->numOfVals = 0;
-    getValStackPointer(newStack);
-}
-
-ValStack getValStackPointer(ValStack newStack)
-{
-    static ValStack vStack;
-    if(newStack != NULL) {
-        vStack = newStack;
-    }
-    
-    return vStack;
-}
-
-void pushToValStack(double val)
-{
-    ValStack vStack = getValStackPointer(NULL);
-    
-    ValNode vN = newValNode();
-    vN->val = val;
-    vN->next = vStack->top;
-    vStack->numOfVals++;
-    vStack->top = vN;
-}
-
-
-ValNode newValNode()
-{
-    ValNode newNode = (ValNode) malloc(sizeof(struct valNode));
-    if(newNode == NULL) {
-        fprintf(stderr, "ERROR - Unable to malloc space for val node in newValNode()\n");
-        exit(1);
-    }
-    
-    newNode->next = NULL;
-    return newNode;
-}
-
-int popFromValStack(double *poppedVal)
-{
-    ValStack vStack = getValStackPointer(NULL);
-    
-    if(vStack->numOfVals > 0) {
-        *poppedVal = vStack->top->val;
-        ValNode tmp = vStack->top;
-        vStack->top = vStack->top->next;
-        free(tmp);
-        vStack->numOfVals--;
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-int getNumberOfValsOnStack()
-{
-    return getValStackPointer(NULL)->numOfVals;
-}
-    
-void freeValStack()
-{
-    ValStack vStack = getValStackPointer(NULL);
-    
-    for(int i = 0; i < vStack->numOfVals; i++) {
-        ValNode tmp = vStack->top;
-        vStack->top = vStack->top->next;
-        free(tmp);
-    }
-    
-    free(vStack);
-}
-
-
 
 
 
@@ -874,10 +714,6 @@ void runParserWhiteBoxTests()
     
     sput_enter_suite("testSetAssignment(): Checking test scripts using the SET command");
     sput_run_test(testSetAssignment);
-    sput_leave_suite();
-    
-    sput_enter_suite("testValStack(): Testing pushing and popping from Val Stack");
-    sput_run_test(testValStack);
     sput_leave_suite();
     
     sput_enter_suite("testDOloops(): Testing syntax parsing of DO loops");
@@ -903,82 +739,43 @@ void testHandlerInitialisation()
 
 void testSetAssignment()
 {
-    setUpForParsing("testingFiles/SET_Testing/test_selfSET.txt", TEST_WHITEBOX);
-    ParseHandler pH = getParseHandlerPointer(NULL);
-    sput_fail_unless(parse() == 1 && getVariableVal(pH, 'C') == 10, "Parsed variable setting itself with correct value (e.g. C += C ;)");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(interpret("testingFiles/SET_Testing/test_selfSET.txt", TEST_WHITEBOX) == 1 && getVariableVal('C') == 10, "Interpreted variable setting itself with correct value (e.g. C += C ;)");
+    shutDownParsing();
 }
 
-void testValStack()
-{
-    createValStack();
-    pushToValStack(3);
-    pushToValStack(12.4);
-    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 2, "After pushing two values to stack, number of items in stack is 2");
-    freeValStack();
-    
-    createValStack();
-    pushToValStack(25);
-    pushToValStack(13);
-    pushToValStack(20);
-    double d = 0;
-    sput_fail_unless(popFromValStack(&d) == 1 && (int) d == 20, "Stack successfully pops value from stack");
-    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 2, "After pushing 3 values and popping 1, number of items in stack is 2");
-    
-    popFromValStack(&d);
-    popFromValStack(&d);
-    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 0, "After pushing 3 values and popping 3, number of items in stack is 0");
-    sput_fail_unless((int) d == 25, "Successfully pops 3 values from stack");
-    
-    sput_fail_unless(popFromValStack(&d) == 0, "Does not alow pop from empty stack");
-    sput_fail_unless((int) d == 25, "Target value unchanged after pop from empty stack");
-    sput_fail_unless(getValStackPointer(NULL)->numOfVals == 0, "Items in stack is still 0 after pop from empty stack");
-    freeValStack();
-}
    
    
 void testDOloops()
 {
-    setUpForParsing("testingFiles/DO_Testing/test_simpleDO.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed simple DO loop ok");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_simpleDO.txt", TEST_WHITEBOX) == 1, "Parsed simple DO loop ok");
+    shutDownParsing();
 
-    setUpForParsing("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse DO without opening brace");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TEST_WHITEBOX) == 0, "Will not parse DO without opening brace");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse DO without closing brace");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TEST_WHITEBOX) == 0, "Will not parse DO without closing brace");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_noFROM_DO.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse DO without FROM keyword");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_noFROM_DO.txt", TEST_WHITEBOX) == 0, "Will not parse DO without FROM keyword");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_noTO_DO.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 0, "Will not parse DO without TO keyword");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_noTO_DO.txt", TEST_WHITEBOX) == 0, "Will not parse DO without TO keyword");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_nestedDO.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed nested DO loop ok");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_nestedDO.txt", TEST_WHITEBOX) == 1, "Parsed nested DO loop ok");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_polishDO.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed DO loop containing reverse polish ok");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_polishDO.txt", TEST_WHITEBOX) == 1, "Parsed DO loop containing reverse polish ok");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_complexDO.txt", TEST_WHITEBOX);
-    sput_fail_unless(parse() == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_complexDO.txt", TEST_WHITEBOX) == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_simpleDOvalues.txt", TEST_WHITEBOX);
-    ParseHandler pH = getParseHandlerPointer(NULL);
-    sput_fail_unless(parse() == 1 && (int) getVariableVal(pH, 'B') == 20, "Parsed simple DO loop with correct value at end");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(interpret("testingFiles/DO_Testing/test_simpleDOvalues.txt", TEST_WHITEBOX) == 1 && (int) getVariableVal('B') == 20, "Interpreted simple DO loop with correct value at end");
+    shutDownParsing();
     
-    setUpForParsing("testingFiles/DO_Testing/test_nestedDOvalues.txt", TEST_WHITEBOX);
-    pH = getParseHandlerPointer(NULL);
-    sput_fail_unless(parse() == 1 && (int) getVariableVal(pH, 'D') == 31, "Parsed nested DO loop with correct value at end");
-    shutDownParsing(TEST_WHITEBOX);
+    sput_fail_unless(interpret("testingFiles/DO_Testing/test_nestedDOvalues.txt", TEST_WHITEBOX) == 1 && (int) getVariableVal('D') == 31, "Interpreted nested DO loop with correct value at end");
+    shutDownParsing();
 }
 
 // independent main function - used in testing
