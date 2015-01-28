@@ -1,32 +1,33 @@
 #include "interpreter.h"
 
-#define TOKEN_LENGTH 100
+#define TOKEN_LENGTH 100 // maximum token length
 
 #define TEST_WITH_SYNTAX_ERRORS 0 //set to 1 to display syntax errors during testing
 
 typedef struct parseHandler *ParseHandler;
 
+// SETUP/SHUTDOWN FUNCTIONS
+void         setUpForParsing(char *filePath, int testMode, int interpretMode);
+void         createParseHandler();
+ParseHandler getParseHandlerPointer(ParseHandler newHandler);
+void         initialiseParseHandler(char *filePath, int testMode);
+void         shutDownParsing();
 
 // PARSE HANDLER FUNCTIONS
-void createParseHandler();
-ParseHandler getParseHandlerPointer(ParseHandler pH);
-void initialiseParseHandler(char *filePath, int testMode);
-void readInTokensFromFile();
+void resizeTokenArray(ParseHandler pH);
 void freeParseHandler();
 
 // PARSING FUNCTIONS
-void setUpForParsing(char *filePath, int testMode, int interpretMode);
-int parse(char * filePath, int testMode);
-int  interpret(char *filePath, int testMode);
-void shutDownParsing();
-int  getToken(ParseHandler pH);
-void resizeTokenArray(ParseHandler pH);
+int       parse(char * filePath, int testMode);
+int       interpret(char *filePath, int testMode);
+int       getToken(ParseHandler pH);
 TokenType whatToken(char *token);
-int  checkForVarNum(char * token);
-int  checkForAnyVar(char * token);
-int  checkForInstruction(char *chkToken);
+int       sameString(char *a, char *b);
+int       checkForEndOfCode(ParseHandler pH);
+int       syntaxError(ParseHandler pH, char *message);
+
+// RECURSIVE DESCENT FUNCTIONS
 int  processMain(ParseHandler pH);
-int  checkForEndOfCode(ParseHandler pH);
 int  processInstructionList(ParseHandler pH);
 int  processInstruction(ParseHandler pH);
 int  processAction(ParseHandler pH);
@@ -42,15 +43,13 @@ int  executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, do
 int  skipLoop(ParseHandler pH);
 int  processColour(ParseHandler pH);
 
-int checkValidOperator(char *c, ParseHandler pH);
-int checkForColour(char *token, ParseHandler pH);
-
-double getTokenVal(ParseHandler pH);
-
-int sameString(char *a, char *b);
-int syntaxError(ParseHandler pH, char *message);
-
-
+// TOKEN CHECKING FUNCTIONS
+int    checkForVarNum(char * token);
+int    checkForAnyVar(char * token);
+int    checkForInstruction(char *chkToken);
+int    checkForValidOperator(char *c, ParseHandler pH);
+int    checkForColour(char *token, ParseHandler pH);
+double getCurrentTokenVal(ParseHandler pH);
 
 // TESTING FUNCTIONS
 // WHITE

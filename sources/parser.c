@@ -1,35 +1,44 @@
 #include "../includes/parser.h"
 
-
+// structure to hold all the necessary information while parsing
 struct parseHandler {
 
   FILE *tokenFP;
   
-  int lineNumber;
-  int hangingBraces;
+  int hangingBraces; // record the number of open braces in order to check for more input after processing
   
-  int numberOfTokens;
-  int currentTokenIndex;
+  int numberOfTokens; // the total number of tokens scanned from the file
+  int currentTokenIndex; // the index in the token array of the current token that is being processed
+  
   char *token;
-  char **tokenArray;
+  char **tokenArray; // an array containing all tokens that have been scanned so far. Used in DO & WHILE loops
   
-  double val;
-  char varToSet;
-  Clr colour;
+  double val; // the current value that is being processed
+  Clr colour; // the current colour that is being processed
   
-  mathSymbol currentOperation;
+  mathSymbol currentOperation; // the current mathematical operation
   
-  int showSyntaxErrors;
-  int interpret;
+  int showSyntaxErrors; // a flag for whether or not to display syntax errors in the terminal. Used for testing
+  int interpret; // a flag for whether to interpret the file or just parse the text
 } ;
 
 
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// PARSE HANDLER FUNCTIONS
-/////////////////////////
+//  SETUP/SHUTDOWN FUNCTIONS  ////////////////////////////////////////////////////////////////
+/*..........................................................................................*/
 
+// sets up all parsing structures and then calls setUpInterpreting() to continue initialising in interpreter.c
+void setUpForParsing(char *filePath, int testMode, int interpretMode)
+{
+    createParseHandler();
+    initialiseParseHandler(filePath, testMode);
+    
+    ParseHandler pH = getParseHandlerPointer(NULL);
+    pH->interpret = interpretMode;
+    setUpForInterpreting(testMode, pH->interpret);
+    
+}
 
 void createParseHandler()
 {
@@ -41,24 +50,24 @@ void createParseHandler()
     getParseHandlerPointer(pH);
 }
 
-ParseHandler getParseHandlerPointer(ParseHandler pH)
+// if passed NULL, returns pointer to the ParseHandler. If passed pointer, sets static pointer to the new pointer
+ParseHandler getParseHandlerPointer(ParseHandler newHandler)
 {
-    static ParseHandler newHandler;
+    static ParseHandler pH;
     
-    if(pH != NULL) {
-        newHandler = pH;
+    if(newHandler != NULL) {
+        pH = newHandler;
     }
-    
-    return newHandler;
+    return pH;
 }
 
+// sets all starting values for parse handler and opens file to read from. If not testing, sets the showSyntaxErrors flag to true. If testing, the syntax error flag is determined by a #define in parser.h
 void initialiseParseHandler(char *filePath, int testMode)
 {
     ParseHandler pH = getParseHandlerPointer(NULL);
     
     pH->tokenFP = fopen(filePath, "r");
     
-    pH->lineNumber = 1;
     pH->hangingBraces = 0;
     pH->currentTokenIndex = 0;
     pH->numberOfTokens = 0;
@@ -69,46 +78,55 @@ void initialiseParseHandler(char *filePath, int testMode)
         pH->showSyntaxErrors = TEST_WITH_SYNTAX_ERRORS;
     }
     
-    if(testMode == NO_TESTING) {
-        pH->interpret = 1;
-    } else {
-        pH->interpret = 0;
-    }
-    
     pH->tokenArray = NULL;
-
 }
 
+void shutDownParsing()
+{
+    freeValStack();
+    freeParseHandler();
+    shutDownInterpreting();
+}
+
+
+
+
+//  PARSE HANDLER FUNCTIONS  /////////////////////////////////////////////////////////////////
+/*..........................................................................................*/
+
+
+// realocs the token array to fit in the next token
+void resizeTokenArray(ParseHandler pH)
+{
+    pH->tokenArray = (char**)realloc(pH->tokenArray,pH->numberOfTokens * sizeof(char*));
+    if(pH->tokenArray == NULL) {
+        fprintf(stderr, "ERROR - realloc failed in getToken()\n");
+        exit(1);
+    }
+    pH->tokenArray[pH->numberOfTokens-1] = (char*)calloc(TOKEN_LENGTH, sizeof(char));
+    if(pH->tokenArray[pH->numberOfTokens-1] == NULL) {
+        fprintf(stderr, "ERROR - malloc failed in getToken()\n");
+        exit(1);
+    }
+}
 
 void freeParseHandler()
 {
     ParseHandler pH = getParseHandlerPointer(NULL);
-    
     fclose(pH->tokenFP);
     
     for(int i = 0; i < pH->numberOfTokens; i++) {
         free(pH->tokenArray[i]);
     }
     free(pH->tokenArray);
-    
     free(pH);
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// PARSING FUNCTIONS
-////////////////////
 
-void setUpForParsing(char *filePath, int testMode, int interpretMode)
-{
-    createParseHandler();
-    initialiseParseHandler(filePath, testMode);
-    
-    ParseHandler pH = getParseHandlerPointer(NULL);
-    pH->interpret = interpretMode;
-    setUpForInterpreting(testMode, pH->interpret);
-    
-}
+//  PARSING FUNCTIONS  ///////////////////////////////////////////////////////////////////////
+/*..........................................................................................*/
+
 
 int parse(char * filePath, int testMode)
 {
@@ -128,54 +146,36 @@ int interpret(char *filePath, int testMode)
     return interpreted;
 }
 
-void shutDownParsing()
-{
-    freeValStack();
-    freeParseHandler();
-    shutDownInterpreting();
-}
-
+// reads the next token and sets it as the ParseHandler's current token
 int getToken(ParseHandler pH)
 {
-    
+      // if not at the end of the token array, advance token index along the array
     if(pH->currentTokenIndex < pH->numberOfTokens-1) {
         pH->currentTokenIndex++;
         pH->token = pH->tokenArray[pH->currentTokenIndex];
-    //printf("%s\n", pH->token);
         return 1;
     }
     
+      // if at the end of the array, increase the number of tokens processed & set the token index to be at the end of the array
     pH->numberOfTokens++;
     pH->currentTokenIndex = pH->numberOfTokens-1;
-    
-    
     resizeTokenArray(pH);
     
+      // scan in next token from file and insert it into the array
     if(fscanf(pH->tokenFP, "%s", pH->tokenArray[pH->numberOfTokens-1]) != 1) {
         if(fgetc(pH->tokenFP) == EOF) {
-            return syntaxError(pH, "TOKEN closing braces do not match opening braces. Are you missing a closing brace?");
+              // if reached the end of file then there are not enough closing braces
+            return syntaxError(pH, "closing braces do not match opening braces. Are you missing a closing brace?");
+        } else {
+            return syntaxError(pH, "invalid character in file");
         }
-        return syntaxError(pH, "invalid character in file");
     } else {
+          // set the current token pointer to the end of the array
         pH->token = pH->tokenArray[pH->numberOfTokens-1];
+        return 1;
     }
-    //printf("%s\n", pH->token);
-    return 1;
 }
 
-void resizeTokenArray(ParseHandler pH)
-{
-    pH->tokenArray = (char**)realloc(pH->tokenArray,pH->numberOfTokens * sizeof(char*));
-    if(pH->tokenArray == NULL) {
-        fprintf(stderr, "ERROR - realloc failed in getToken()\n");
-        exit(1);
-    }
-    pH->tokenArray[pH->numberOfTokens-1] = (char*)calloc(TOKEN_LENGTH, sizeof(char));
-    if(pH->tokenArray[pH->numberOfTokens-1] == NULL) {
-        fprintf(stderr, "ERROR - malloc failed in getToken()\n");
-        exit(1);
-    }
-}
         
 // analyses the token string and returns an enum for the type of token.
 TokenType whatToken(char *token)
@@ -202,8 +202,9 @@ TokenType whatToken(char *token)
     if(sameString(token, "RAND"))  {return randomColour;}
     if(sameString(token, "ADV"))   {return advanceColour;}
     
-    if(checkValidOperator(token, pH) == 1) {return op;}
+    if(checkForValidOperator(token, pH) == 1) {return op;}
     
+      // if a single character, check for variable. If it is a variable, check whether it has been assigned
     if(strlen(token) == 1) {
         if(checkValidVariable(token[0])) {
             if(checkVariableAssigned(token[0], pH->interpret, &pH->val)) {
@@ -218,42 +219,42 @@ TokenType whatToken(char *token)
     else {return noToken;}
 }
 
-int checkForVarNum(char * token)
+// returns 1 if two strings are identical, ese returns 0
+int sameString(char *a, char *b)
 {
-    if(whatToken(token) == assignedVar || whatToken(token) == num) {
+    if(strcmp(a,b) == 0) {
         return 1;
-    }
-    return 0;
-}
-
-int checkForAnyVar(char * token)
-{
-    if(whatToken(token) == assignedVar || whatToken(token) == unassignedVar) {
-        return 1;
-    }
-    return 0;
-}
-
-int checkForInstruction(char *chkToken)
-{
-    TokenType t = whatToken(chkToken);
-    
-    switch(t) {
-        case fd :
-        case rt :
-        case lt :
-        case set :
-        case doToken :
-        case whileToken :
-        case bkStep :
-        case penChange :
-        case colour :
-            return 1;
-        default :
-            return 0;
+    } else {
+        return 0;
     }
 }
         
+// used at the end of parsing. Returns 0 if there is anything other than spaces or newlines before the end of the file 
+int checkForEndOfCode(ParseHandler pH)
+{
+    char c;
+    while((c = fgetc(pH->tokenFP) ) != EOF) {
+        if(c != ' ' && c != '\n') {
+            return syntaxError(pH, "additional input detected. Are you missing an opening brace?");
+        }
+    }
+    return 1;
+}    
+        
+
+int syntaxError(ParseHandler pH, char *message)
+{
+    if(pH->showSyntaxErrors) {
+        fprintf(stderr, "Syntax error - %s\nError at: %s\n", message, pH->token);
+    }
+    return 0;
+}        
+
+
+
+//  RECURSIVE DESCENT FUNCTIONS  /////////////////////////////////////////////////////////////
+/*..........................................................................................*/
+
 // "{" <INSTRCTLIST>
 int processMain(ParseHandler pH)
 {
@@ -277,16 +278,6 @@ int processMain(ParseHandler pH)
     }
 }
      
-int checkForEndOfCode(ParseHandler pH)
-{
-    char c;
-    while((c = fgetc(pH->tokenFP) ) != EOF) {
-        if(c != ' ' && c != '\n') {
-            return syntaxError(pH, "additional input detected. Are you missing an opening brace?");
-        }
-    }
-    return 1;
-}
 
 /* <INSTRCTLIST>: */
 // <INSTRUCTION> <INSTRCTLIST> | "}"
@@ -487,7 +478,7 @@ int processDo(ParseHandler pH)
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following FROM in DO command");
     }
-    int loopVal = (int) getTokenVal(pH);
+    int loopVal = (int) getCurrentTokenVal(pH);
     assignValToVariable(loopVariable, (double)loopVal, pH->interpret);
     
       // "TO"
@@ -501,7 +492,7 @@ int processDo(ParseHandler pH)
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
-    int loopTargetVal = (int) getTokenVal(pH);
+    int loopTargetVal = (int) getCurrentTokenVal(pH);
     
       // "{" (hanging braces is incremented within the loop)
     if(!getToken(pH)) {return 0;}
@@ -535,7 +526,7 @@ int executeUpwardsDoLoop(ParseHandler pH, int doLoopStartIndex, char loopVariabl
         
           // carry out the embedded instruction list
         if(!processInstructionList(pH)) {
-            return syntaxError(pH, "DO error");
+            return syntaxError(pH, "error within DO loop");
         }
     }
     return 1;
@@ -553,7 +544,7 @@ int executeDownwardsDoLoop(ParseHandler pH, int doLoopStartIndex, char loopVaria
         
           // carry out the embedded instruction list
         if(!processInstructionList(pH)) {
-            return syntaxError(pH, "DO error");
+            return syntaxError(pH, "error within DO loop");
         }
     }
     return 1;
@@ -583,7 +574,7 @@ int processWhile(ParseHandler pH)
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following operator in WHILE command");
     }
-    double loopTargetVal = getTokenVal(pH);
+    double loopTargetVal = getCurrentTokenVal(pH);
     
       // "{" (hanging braces increased within loop or during loop bypass)
     if(!getToken(pH)) {return 0;}
@@ -616,7 +607,7 @@ int executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, dou
             pH->hangingBraces++;
             
             if(!processInstructionList(pH)) {
-                return syntaxError(pH, "WHERE error");
+                return syntaxError(pH, "error within WHILE loop");
             }
         }
       
@@ -631,7 +622,7 @@ int executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, dou
             pH->hangingBraces++;
             
             if(!processInstructionList(pH)) {
-                return syntaxError(pH, "WHERE error");
+                return syntaxError(pH, "error within WHILE loop");
             }
         }
     }
@@ -663,16 +654,24 @@ int skipLoop(ParseHandler pH)
               printf("Warning: bypassed syntax error within while loop\n");
           }
           return 1;
+      } else{
+          return syntaxError(pH, "error within WHILE loop");
       }
     }
     return successfulParse;
 }
     
+    
+/* <CLR>: */
 
+// "CLR" "ADV" | ("CLR" already asserted in processInstruction()"
+// "CLR" "RAND" |
+// "CLR" colour
 int processColour(ParseHandler pH)
 {
     if(!getToken(pH)) {return 0;}
     
+      // "ADV"
     if(whatToken(pH->token) == advanceColour) {
         if(pH->interpret) {
             advanceTurtleColour();
@@ -680,6 +679,7 @@ int processColour(ParseHandler pH)
         return 1;
     }
     
+      // "RAND"
     if(whatToken(pH->token) == randomColour) {
         if(pH->interpret) {
             setRandomTurtleColour();
@@ -687,6 +687,7 @@ int processColour(ParseHandler pH)
         return 1;
     }
     
+      // colour
     if(checkForColour(pH->token, pH) ) {
         if(pH->interpret) {
             applyTurtleColour(pH->colour);
@@ -700,9 +701,52 @@ int processColour(ParseHandler pH)
 
 
 
+//  TOKEN CHECKING FUNCTIONS  ////////////////////////////////////////////////////////////////
+/*..........................................................................................*/
 
-int checkValidOperator(char *c, ParseHandler pH)
+// returns 1 if passed token is an assigned variable or a number
+int checkForVarNum(char * token)
 {
+    if(whatToken(token) == assignedVar || whatToken(token) == num) {
+        return 1;
+    }
+    return 0;
+}
+
+// returns 1 if the passed token is a variable, regardless of whether it has already been assigned
+int checkForAnyVar(char * token)
+{
+    if(whatToken(token) == assignedVar || whatToken(token) == unassignedVar) {
+        return 1;
+    }
+    return 0;
+}
+
+// returns 1 if the passed token is any one of the instruction commands
+int checkForInstruction(char *chkToken)
+{
+    TokenType t = whatToken(chkToken);
+    
+    switch(t) {
+        case fd :
+        case rt :
+        case lt :
+        case set :
+        case doToken :
+        case whileToken :
+        case bkStep :
+        case penChange :
+        case colour :
+            return 1;
+        default :
+            return 0;
+    }
+}
+
+// returns 1 if the passed token is a mathematical operator
+int checkForValidOperator(char *c, ParseHandler pH)
+{
+      // check token has only one character - prevents "-5", for example, from being read as a minus operator
     if(strlen(c) > 1) {
         return 0;
     }
@@ -724,6 +768,7 @@ int checkValidOperator(char *c, ParseHandler pH)
     }
 }
 
+// returns 1 if the passed token is any one of the valid colours and sets the ParseHandler's current colour
 int checkForColour(char *token, ParseHandler pH)
 {
     if(sameString(token, "WHTE")) {
@@ -753,9 +798,8 @@ int checkForColour(char *token, ParseHandler pH)
     return 0;
 }
 
-
-
-double getTokenVal(ParseHandler pH)
+// if token is a number, returns number. Else returns the number stored as that variable
+double getCurrentTokenVal(ParseHandler pH)
 {
     if(checkForNumber(pH->token, &pH->val) ) {
         return pH->val;
@@ -763,37 +807,10 @@ double getTokenVal(ParseHandler pH)
     return getVariableVal(pH->token[0]);
 }
 
-    
-int sameString(char *a, char *b)
-{
-    if(strcmp(a,b) == 0) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
 
-int syntaxError(ParseHandler pH, char *message)
-{
-    if(pH->showSyntaxErrors) {
-        fprintf(stderr, "Syntax error - %s\nError at: %s\n", message, pH->token);
-    }
-    return 0;
-}
+//  WHITE BOX TESTING FUNCTIONS  /////////////////////////////////////////////////////////////
+/*..........................................................................................*/
 
-
-///////////////////////////////////////////////////////////////////
-// VARIABLE HANDLING FUNCTIONS
-//////////////////////////////
-
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////
-// WHITE BOX TESTING FUNCTIONS
-//////////////////////////////
 void runParserWhiteBoxTests()
 {
 	  sput_start_testing();
@@ -820,7 +837,6 @@ void testHandlerInitialisation()
     ParseHandler pH = getParseHandlerPointer(NULL);
     
     sput_fail_unless(pH->tokenFP != NULL, "Parser Handler sets token file pointer on initialisation");
-    sput_fail_unless(pH->lineNumber == 1, "Parser Handler initialises line number to 1");
     freeParseHandler();
 }
 
@@ -829,6 +845,11 @@ void testSetAssignment()
     sput_fail_unless(interpret("testingFiles/SET_Testing/test_selfSET.txt", TESTING) == 1 && getVariableVal('C') == 10, "Interpreted variable setting itself with correct value (e.g. C += C ;)");
     shutDownParsing();
 }
+
+
+
+//  BLACK BOX TESTING FUNCTIONS  /////////////////////////////////////////////////////////////
+/*..........................................................................................*/
 
 
 void runInterpreterBlackBoxTests()

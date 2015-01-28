@@ -7,7 +7,7 @@
 #define MAX_ANGLE 360 // used to mod turtle's angle so it never goes beyond 360 degrees. Technically not necessary but useful in testing
 #define NUMBER_OF_VARIABLES 26 // the number of variables in the variable list (26 as A-Z)
 
-#define INTERPRET 1
+#define INTERPRET 1 
 #define DONT_INTERPRET 0
 
 
@@ -22,8 +22,9 @@ typedef struct variable *Variable;
 typedef struct valStack *ValStack;
 typedef struct valNode *ValNode;
 
+// all possible tokens
 enum tokenType {
-  instrctlist, instruction, fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
+  fd, lt, rt, varnum, var, set, polish, op, equals, val, semicolon,
   from, to, openBrace, closeBrace, doToken, whileToken, num, noToken, assignedVar, unassignedVar, bkStep,
   moreThan, lessThan, penChange, colour, randomColour, advanceColour
 } ;
@@ -39,35 +40,35 @@ enum penUpDown {
 } ;
 typedef enum penUpDown PenUpDown;
 
-
+// SETUP/SHUTDOWN FUNCTIONS
 void setUpForInterpreting(int testMode, int interpretMode);
 void shutDownInterpreting();
 
 // TURTLE STRUCTURE FUNCTIONS
-void createTurtle();
+void   createTurtle();
 Turtle getTurtlePointer(Turtle newTurtle);
-void initialiseTurtle(int testMode, int interpretMode);
-void initialiseVariableList(Turtle t);
-void freeTurtle();
+void   initialiseTurtle(int testMode, int interpretMode);
+void   initialiseVariableList(Turtle t);
+void   freeTurtle();
 
 // POSITION STACK FUNCTIONS
-void createPositionStack();
+void          createPositionStack();
 PositionStack getPositionStackPointer(PositionStack newStack);
-void freePositionStack();
+void          freePositionStack();
 
 // POSITION NODE FUNCTIONS
 PositionNode newPositionNode();
-void pushToPositionStack(PositionNode pNode);
+void         pushToPositionStack(PositionNode pNode);
 PositionNode popFromPositionStack();
 
 // VAL STACK FUNCTIONS
-void createValStack();
+void     createValStack();
 ValStack getValStackPointer(ValStack newStack);
-void pushToValStack(double val);
-ValNode newValNode();
-int popFromValStack(double *poppedVal);
-int getNumberOfValsOnStack();
-void freeValStack();
+void     pushToValStack(double val);
+ValNode  newValNode();
+int      popFromValStack(double *poppedVal);
+int      getNumberOfValsOnStack();
+void     freeValStack();
 
 // MOVE HANDLING FUNCTIONS
 void doAction(TokenType actionType, double val);
@@ -88,14 +89,14 @@ double doMaths(double a, double b, mathSymbol op);
 
 // INFORMATION RETURNING FUNCTIONS
 double getVariableVal(char c);
-int checkValidVariable(char c);
-int checkVariableAssigned(char c, int interpret, double *valToSet);
-int checkForNumber(char *token, double *valToSet);
-void assignValToVariable(char varToSet, double val, int interpret);
-int getTurtleX();
-int getTurtleY();
-int getTurtleAngle();
-Clr getTurtleColour();
+int    checkValidVariable(char c);
+int    checkVariableAssigned(char c, int interpret, double *valToSet);
+int    checkForNumber(char *token, double *valToSet);
+void   assignValToVariable(char varToSet, double val, int interpret);
+int    getTurtleX();
+int    getTurtleY();
+int    getTurtleAngle();
+Clr    getTurtleColour();
 
 // WHITE BOX TESTING FUNCTIONS
 void runInterpreterWhiteBoxTests();

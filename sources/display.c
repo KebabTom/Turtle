@@ -49,7 +49,7 @@ void initialiseSDL()
       exit(1);
    } 
 
-   sw->finished = 0;
+   sw->finished = 0; // used to manually shut down SDL
    
    sw->win= SDL_CreateWindow("SDL Window",
                           SDL_WINDOWPOS_UNDEFINED,
@@ -96,11 +96,14 @@ void drawBlackBackground()
     rect.x = 0;
     rect.y = 0;
     
-    setSDLDrawColour(sw, 0, 0, 0);
+      // draw a black rectangle over the whle window
+    setSDLDrawColour(sw, BLACK_R, BLACK_G, BLACK_R);
     SDL_RenderFillRect(sw->renderer, &rect);
     SDL_RenderPresent(sw->renderer);
     SDL_UpdateWindowSurface(sw->win);
-    setSDLDrawColour(sw, 255, 255, 255);
+    
+      // initially set the draw colour to white
+    setSDLDrawColour(sw, WHITE_R, WHITE_G, WHITE_B);
 }
 
 void drawLine(int xFrom, int yFrom, int xTo, int yTo)
@@ -167,6 +170,7 @@ void Neill_SDL_Events(SDL_Simplewin sw)
     }
 }
 
+// continuous loop to hold SDL window open until user closes it
 void holdScreenUntilUserInput()
 {
     SDL_Simplewin sw = getSDL_SimplewinPointer(NULL);

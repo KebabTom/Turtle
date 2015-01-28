@@ -36,6 +36,11 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+
+//// SETUP/SHUTDOWN FUNCTIONS ////////////////////////////////////////////////
+/*..........................................................................*/
+
+  // set up everything and either parse or interpret the file depending on user input
 void runFullProgram(char *filePath)
 {
     printf("Enter 0 to parse, 1 to interpret: \n");
@@ -50,18 +55,17 @@ void runFullProgram(char *filePath)
     
     if(interpretFile) {
         processedOK = interpret(filePath, NO_TESTING);
-        holdScreenUntilUserInput();
+        holdScreenUntilUserInput(); // if interpretting, SDL is initialised so hold the window open after completion
     } else {   
         processedOK = parse(filePath, NO_TESTING);
-        if(DRAW_SDL_IN_TESTS) {
-            holdScreenUntilUserInput();
-        }
     }
     
     shutDownParsing();
     
     if(processedOK) {
         printf("Success\n");
+    } else {
+        printf("Failure\n");
     }
 }
 
@@ -115,6 +119,7 @@ void exitWithCommandLineError()
 
 }
 
+// processes the user input and returns the type of mode to start the program in
 int getStartMode(int argc, char *argv[])
 {
     // if two arguments, set up the parse heper using filepath from argv[1]
@@ -144,15 +149,15 @@ int getStartMode(int argc, char *argv[])
 }
     
 
+//// WHITE BOX TESTING FUNCTIONS /////////////////////////////////////////////
+/*..........................................................................*/
 
 
 void runWhiteBoxTesting()
 {
-	  
     runCommandLineTests();
     runParserWhiteBoxTests();
     runInterpreterWhiteBoxTests();
-    
 }
 
 void runBlackBoxTesting()

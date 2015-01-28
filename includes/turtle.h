@@ -3,16 +3,16 @@
 #include "parser.h"
 #include <time.h>
 
-
+  // #defines used in switch statement in main to determine how to set up the program (NO_TESTING is defined in interpreter.h)
 #define TEST_WHITEBOX 1
 #define TEST_BLACKBOX 2
 #define TEST_SYSTEM 3
 #define TEST_ALL 4
 
 void runFullProgram(char *filePath);
-int checkInput(int argc, char *argv[], int testMode);
+int  checkInput(int argc, char *argv[], int testMode);
 void exitWithCommandLineError();
-int getStartMode(int argc, char *argv[]);
+int  getStartMode(int argc, char *argv[]);
 
 
 

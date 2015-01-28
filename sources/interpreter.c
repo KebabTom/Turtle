@@ -13,6 +13,7 @@ struct variable {
     int assigned;
 } ;
 
+  // structure containing al the information needed to draw the turtle
 struct turtle {
     double x, y;
     int angle;
@@ -23,6 +24,7 @@ struct turtle {
     Variable varList[NUMBER_OF_VARIABLES];
 } ;
 
+  // a stack to hold all previous positions and angles of the turtle. Used with the BKSTP command
 struct positionStack {
     int numOfPositions;
     PositionNode top;
@@ -34,6 +36,7 @@ struct positionNode {
     PositionNode next;
 } ;
 
+  // a stack to hold all the values used in reverse Polish expressions. Used when calculatind in SET commands
 struct valStack {
 
   int numOfVals;
@@ -46,9 +49,10 @@ struct valNode {
   ValNode next;
 } ;
 
-////  SETUP/SHUTDOWN FUNCTIONS //////////////////////////////////////////////////////
+//// SETUP/SHUTDOWN FUNCTIONS ////////////////////////////////////////////////
 /*..........................................................................*/
 
+// creates all structures for interpretting and initialises SDL if required
 void setUpForInterpreting(int testMode, int interpretMode)
 {
     createTurtle();
@@ -72,9 +76,9 @@ void shutDownInterpreting()
     freePositionStack();
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-// TURTLE STRUCTURE FUNCTIONS
-/////////////////////////////
+//// TURTLE STRUCTURE FUNCTIONS //////////////////////////////////////////////
+/*..........................................................................*/
+
 
 void createTurtle() {
     Turtle newTurtle = (Turtle) malloc(sizeof(struct turtle));
@@ -111,6 +115,8 @@ void initialiseTurtle(int testMode, int interpretMode)
     
     initialiseVariableList(t);
     
+    // if initialised in testing mode, SDL is initialised as indicated by a #define in iterpreter.h
+    // if interpretting, flag turtle to set up SDL. If only parsing then leave SDL alone
     if(testMode == NO_TESTING) {
         if(interpretMode == INTERPRET) {
             t->drawTurtle = 1;
@@ -122,6 +128,7 @@ void initialiseTurtle(int testMode, int interpretMode)
     }
 }
 
+  // initialise the array of variable structures to hold values and assigned status for all variables
 void initialiseVariableList(Turtle t)
 {
     for(int i = 0; i < NUMBER_OF_VARIABLES; i++) {
@@ -145,9 +152,8 @@ void freeTurtle()
     free(t);
 }
     
-//////////////////////////////////////////////////////////////////////////////////////////////
-// POSITION STACK FUNCTIONS
-///////////////////////////////
+//// POSITION STACK FUNCTIONS ////////////////////////////////////////////////
+/*..........................................................................*/
 
 void createPositionStack()
 {
@@ -221,9 +227,8 @@ PositionNode popFromPositionStack()
 }
 
 
-///////////////////////////////////////////////////////////////////
-// VAL STACK FUNCTIONS
-/////////////////////////
+//  VAL STACK FUNCTIONS  //////////////////////////////////////////////
+/*...................................................................*/
 
 void createValStack()
 {
@@ -309,10 +314,10 @@ void freeValStack()
 
 
 
-///////////////////////////////////////////////////////////////////////
-// MOVE PROCESSING FUNCTIONS
-////////////////////////////
+//  MOVE HANDLING FUNCTIONS  //////////////////////////////////////////
+/*...................................................................*/
 
+// rotates, moves or backsteps the turtle depending on passed action and value
 void doAction(TokenType actionType, double val)
 {
     Turtle t = getTurtlePointer(NULL);
@@ -331,7 +336,7 @@ void doAction(TokenType actionType, double val)
             moveTurtle(val);
             break;
         case bkStep :
-            backstep(t, val);
+            backstep(t, (int) val);
             break;
         default :
             fprintf(stderr,"ERROR - incorrect token passed to doAction()\n");
@@ -339,6 +344,7 @@ void doAction(TokenType actionType, double val)
     }
 }
 
+  // changes the turtle's x & y positions based on its angle and the move length
 void moveTurtle(int moveLength)
 {
     Turtle t = getTurtlePointer(NULL);
@@ -367,6 +373,7 @@ void moveTurtle(int moveLength)
     }
 }
 
+// create a position node with turtle's current x, y & angle and push it to the position stack. Done before every move
 void storeTurtlePosition(Turtle t)
 {
     PositionNode pNode = newPositionNode();
@@ -377,6 +384,7 @@ void storeTurtlePosition(Turtle t)
     pushToPositionStack(pNode);
 }
 
+// pop the last position node from the stack and update the turtle to move it back one step. If already back to start, does nothing
 void backstep(Turtle t, int steps)
 {
     for(int i = 0; i < steps; i++) {
@@ -405,6 +413,7 @@ void switchPenStatus()
     }
 }
 
+// moves the turtle on to the next colour
 void advanceTurtleColour()
 {
     Turtle t = getTurtlePointer(NULL);
@@ -420,6 +429,7 @@ void setRandomTurtleColour()
     applyTurtleColour(t->drawColour);
 }
 
+// updates the SDL draw colour in display.c with the turtle's current colour
 void applyTurtleColour(Clr colour)
 {
     Turtle t = getTurtlePointer(NULL);
@@ -429,15 +439,16 @@ void applyTurtleColour(Clr colour)
     }
 }
 
-//////////////////////////////////////////////////////////////////////
-// MATHS FUNCTIONS
-//////////////////
+///// MATHS FUNCTIONS ////////////////////////////////////////////////
+/*..................................................................*/
 
+// when passed an angle in degrees, returns angle in radians. Used when calculating turtle angle
 double degreesToRad(int deg)
 {
     return (double) deg * (M_PI/180.0); //multiply angle in degrees by pi/180 to give angle in radians
 }
 
+// it does maths
 double doMaths(double a, double b, mathSymbol op)
 {
     switch(op) {
@@ -458,6 +469,7 @@ double doMaths(double a, double b, mathSymbol op)
 ///// INFORMATION RETURNING FUNCTIONS ////////////////////////////////
 /*..................................................................*/
 
+// returns the value of the passed variable from the turtles variable array
 double getVariableVal(char c)
 {
     Turtle t = getTurtlePointer(NULL);
@@ -541,6 +553,7 @@ void assignValToVariable(char varToSet, double val, int interpret)
     }
 }
 
+// functions below are used in system testing after running test programs to make sure the turtle is where it should be
 int getTurtleX()
 {
     return (int) getTurtlePointer(NULL)->x;
@@ -561,9 +574,8 @@ Clr getTurtleColour()
     return getTurtlePointer(NULL)->drawColour;
 }
 
-//////////////////////////////////////////////////////////////////////
-// WHITE BOX TESTING FUNCTIONS
-//////////////////////////////
+///// WHITE BOX TESTING FUNCTIONS ////////////////////////////////////
+/*..................................................................*/
 
 void runInterpreterWhiteBoxTests()
 {
@@ -630,7 +642,7 @@ void testTurtleActions()
     t->x = 0; t->y = 0; t->angle = 0;
     // set up 3, 4, 5 triangle and check movement ammounts
     doAction(rt, 45);
-    doAction(fd, 5000);
+    doAction(fd, 500);
     sput_fail_unless((int) t->x + (int) t->y == 0, "After move at 45 degrees, x and y have been changed by the same ammount");
     
     shutDownInterpreting();

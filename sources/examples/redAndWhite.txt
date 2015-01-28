@@ -1,0 +1,21 @@
+{
+PN
+RT 180
+FD 50
+RT 90
+FD 50
+RT 90
+PN
+SET A := 100 ;
+WHILE A > 0 {
+  CLR RED
+  FD A
+  CLR WHTE
+  SET B := A 5 / ;
+  FD B
+  BKSTP 1
+  RT 90
+  SET A := A 2 - ;
+  }
+}
+  

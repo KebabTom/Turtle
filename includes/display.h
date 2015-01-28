@@ -6,7 +6,7 @@
 
 
 #define MILLISECOND_DELAY 25
-#define TURTLE_SPEED 4
+#define TURTLE_SPEED 10
 
 #define SCREEN_WIDTH 1000
 #define SCREEN_HEIGHT 700

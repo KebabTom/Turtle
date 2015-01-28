@@ -1,0 +1,19 @@
+{
+SET A := 10 ;
+WHILE A < 500 {
+  SET C := A 2 / ;
+  DO B FROM 1 TO 60 {
+    CLR ADV
+    FD C
+    BKSTP 1
+    RT 6
+    }
+  RT 62
+  PN
+  FD A
+  PN
+  SET A := A 5 + ;
+  }
+}
+  
+  
