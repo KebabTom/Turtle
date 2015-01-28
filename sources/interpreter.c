@@ -13,7 +13,6 @@ struct variable {
     int assigned;
 } ;
 
-
 struct turtle {
     double x, y;
     int angle;
@@ -507,13 +506,15 @@ int checkVariableAssigned(char c, int interpret, double *valToSet)
     return 0;
 }
 
+// run strtod() once, and if there are no characters left over in the string then it is a valid number. If so, run strtod() again to update the contents of valToSet
 int checkForNumber(char *token, double *valToSet)
 {
     char *remainder;
-    *valToSet = strtod(token, &remainder);
+    strtod(token, &remainder);
     if(remainder[0] != '\0') {
         return 0;
     } else {
+        *valToSet = strtod(token, &remainder);
         return 1;
     }
 }
@@ -582,6 +583,10 @@ void runInterpreterWhiteBoxTests()
     sput_enter_suite("testValStack(): Testing pushing and popping from Val Stack");
     sput_run_test(testValStack);
     sput_leave_suite();
+    
+    sput_enter_suite("testPositionStack(): Testing pushing and popping from Position Stack");
+    sput_run_test(testPositionStack);
+    sput_leave_suite();
 
 	  sput_finish_testing();
 }
@@ -603,7 +608,7 @@ void testTurtleInitialisation()
 
 void testTurtleActions()
 {
-    setUpForInterpreting(TESTING, DONT_INTERPRET);
+    setUpForInterpreting(TESTING, INTERPRET);
     Turtle t = getTurtlePointer(NULL);
     
     doAction(rt, 60);
@@ -661,13 +666,39 @@ void testValStack()
 
 
 
+void testPositionStack()
+{
+    createPositionStack();
+    PositionStack pStack = getPositionStackPointer(NULL);
+    sput_fail_unless(pStack->numOfPositions == 0, "Position Stack initialised with correct number of positions");
+    PositionNode tstNode = newPositionNode();
+    tstNode->x = 35;
+    pushToPositionStack(tstNode);
+    sput_fail_unless(pStack->numOfPositions == 1, "Position Stack has correct number of positions after push");
+    sput_fail_unless(pStack->top->x == 35, "Position Stack has correct x value of first node");
+    PositionNode tstNodeTwo = popFromPositionStack();
+    sput_fail_unless(tstNodeTwo->x == 35, "Position Stack has popped node with correct x value");
+    sput_fail_unless(pStack->numOfPositions == 0, "Position Stack has correct number of positions after pop");
+    free(tstNode);
+    tstNodeTwo = popFromPositionStack();
+    sput_fail_unless(pStack->numOfPositions == 0, "Position Stack has correct number of positions after pop from empty stack");
+    
+    freePositionStack();
+    
+}
 
 
 
+// independent main function - used in testing
+// command line compile code: gcc `sdl2-config --cflags` -O4 -Wall -pedantic -std=c99 -o interpretTest interpreter.c display.c -lm `sdl2-config --libs`
+/*
+int main(void)
+{
+    runInterpreterWhiteBoxTests();
+    
+}
 
-
-
-
+*/
 
 
 

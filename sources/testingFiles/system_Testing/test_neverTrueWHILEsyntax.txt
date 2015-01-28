@@ -1,0 +1,13 @@
+{
+FD 20
+SET A := 13 ;
+WHILE A < 10 {
+  RT 20
+  FD 20
+  Kebab
+  SET A := A 1 + ;
+  FD 20
+  }
+FD 25
+LT 40
+}

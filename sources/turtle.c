@@ -46,7 +46,7 @@ void runFullProgram(char *filePath)
         exit(1);
     }
     
-    int processedOK;
+    int processedOK = 0;
     
     if(interpretFile) {
         processedOK = interpret(filePath, NO_TESTING);
@@ -158,6 +158,7 @@ void runWhiteBoxTesting()
 void runBlackBoxTesting()
 {
     runParserBlackBoxTests();
+    runInterpreterBlackBoxTests();
 }
 
 void runSystemTesting()
@@ -168,6 +169,8 @@ void runSystemTesting()
     sput_enter_suite("systemTesting(): Checking full system implementation");
     sput_run_test(systemTesting);
     sput_leave_suite();
+    
+	  sput_finish_testing();
 }
 
 void runCommandLineTests()
@@ -180,7 +183,6 @@ void runCommandLineTests()
     sput_leave_suite();
     
 	  sput_finish_testing();
-    
 }
 
 void testCommandLine()
@@ -234,6 +236,10 @@ void runParserBlackBoxTests()
     
     sput_enter_suite("testSetCommand(): Checking test scripts using the SET command");
     sput_run_test(testSetCommand);
+    sput_leave_suite();
+    
+    sput_enter_suite("testDOloops(): Testing syntax parsing of DO loops");
+    sput_run_test(testDOloops);
     sput_leave_suite();
     
     sput_enter_suite("testBackstepCommand(): Checking test scripts using the BKSTP command");
@@ -301,6 +307,47 @@ void testSetCommand()
     
     sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TESTING) == 0, "Will not parse SET command with unbalanced (too many operators) reverse polish equation");
     shutDownParsing();
+}
+   
+   
+void testDOloops()
+{
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_simpleDO.txt", TESTING) == 1, "Parsed simple DO loop ok");
+    shutDownParsing();
+
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TESTING) == 0, "Will not parse DO without opening brace");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TESTING) == 0, "Will not parse DO without closing brace");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_noFROM_DO.txt", TESTING) == 0, "Will not parse DO without FROM keyword");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_noTO_DO.txt", TESTING) == 0, "Will not parse DO without TO keyword");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_nestedDO.txt", TESTING) == 1, "Parsed nested DO loop ok");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_polishDO.txt", TESTING) == 1, "Parsed DO loop containing reverse polish ok");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_complexDO.txt", TESTING) == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
+    shutDownParsing();
+    
+    sput_fail_unless(interpret("testingFiles/DO_Testing/test_simpleDOvalues.txt", TESTING) == 1 && (int) getVariableVal('B') == 20, "Interpreted simple DO loop with correct value at end");
+    shutDownParsing();
+    
+    sput_fail_unless(interpret("testingFiles/DO_Testing/test_nestedDOvalues.txt", TESTING) == 1 && (int) getVariableVal('D') == 31, "Interpreted nested DO loop with correct value at end");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_descendingDO.txt", TESTING) == 1, "Parsed descending DO loop ok");
+    shutDownParsing();
+    
+    sput_fail_unless(interpret("testingFiles/DO_Testing/test_descendingDO.txt", TESTING) == 1, "Interpreted descending DO loop ok");
+    shutDownParsing();
+    
 }
 
 void testBackstepCommand()
@@ -386,6 +433,11 @@ void systemTesting()
     sput_fail_unless(getTurtleX() == SCREEN_WIDTH/2, "Turtle in correct x position after interpretting never true while loop");
     sput_fail_unless(getTurtleY() == (SCREEN_HEIGHT/2) - 45, "Turtle in correct y position after interpretting never true while loop");
     sput_fail_unless(getTurtleAngle() == 320, "Turtle at correct angle after after interpretting never true while loop");
+    shutDownParsing();
+    
+    sput_fail_unless(parse("testingFiles/system_Testing/test_neverTrueWHILEsyntax.txt", TEST_SYSTEM) == 0, "Will not parse file with syntax error within never true while loop");
+    shutDownParsing();
+    sput_fail_unless(interpret("testingFiles/system_Testing/test_neverTrueWHILEsyntax.txt", TEST_SYSTEM) == 1, "Interprets file with syntax error within never true while loop ok");
     shutDownParsing();
     
     

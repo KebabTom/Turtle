@@ -29,6 +29,7 @@ void runParserBlackBoxTests();
 void testSyntaxErrors();
 void testVarNum();
 void testSetCommand();
+void testDOloops();
 void testBackstepCommand();
 void testWhileCommand();
 void testPenSwitchCommand();

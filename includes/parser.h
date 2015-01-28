@@ -53,7 +53,25 @@ int syntaxError(ParseHandler pH, char *message);
 
 
 // TESTING FUNCTIONS
+// WHITE
 void runParserWhiteBoxTests();
 void testHandlerInitialisation();
 void testSetAssignment();
-void testDOloops();
+
+// BLACK
+void runInterpreterBlackBoxTests();
+void testDoMaths();
+void testVariableHandling();
+void testNumberChecking();
+
+
+
+
+
+
+
+
+
+
+
+

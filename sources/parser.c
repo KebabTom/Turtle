@@ -559,51 +559,58 @@ int executeDownwardsDoLoop(ParseHandler pH, int doLoopStartIndex, char loopVaria
     return 1;
 }
 
+/* <WHILE>: */
+
+// "WHILE" <ASSIGNEDVAR> <COMPARATOR> <VARNUM> "{" <INTRCTLST> ("WHILE" already asserted in processInstruction() )
 int processWhile(ParseHandler pH)
 {
+      // <ASSIGNEDVAR>
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != assignedVar) {
         return syntaxError(pH, "unassigned variable in WHILE command declaration");
     }
     char loopVariable = pH->token[0];
     
+      // <COMPARATOR>
     if(!getToken(pH)) {return 0;}
     TokenType loopType = whatToken(pH->token);
-    
     if(loopType != lessThan && loopType != moreThan) {
         return syntaxError(pH, "missing comparator in WHILE command");
     }
     
+      // <VARNUM>
     if(!getToken(pH)) {return 0;}
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following operator in WHILE command");
     }
-    
     double loopTargetVal = getTokenVal(pH);
     
-    
+      // "{" (hanging braces increased within loop or during loop bypass)
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != openBrace) {
-        return syntaxError(pH, "missing opening brace in DO loop initialisation");
+        return syntaxError(pH, "missing opening brace in WHILE loop initialisation");
     }
     
     // record token index to restart loop
     int loopStartIndex = pH->currentTokenIndex;
     
+      // <INSTRCTLST>
     if(!pH->interpret) {
         return skipLoop(pH);
+    } else {
+        return executeWhileLoop(pH, loopType, loopVariable, loopTargetVal, loopStartIndex);
     }
-    
-    return executeWhileLoop(pH, loopType, loopVariable, loopTargetVal, loopStartIndex);
 }
 
-// processes while loop until while condition is met. If consition is initially unset, parses loop once but doesn't set any values
+// processes while loop until while condition is met. If condition is met on instigation, parses loop once but doesn't set any values
 int executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, double loopTargetVal, int loopStartIndex)
 {
     if(loopType == lessThan) {
+          //check if condition is already met
         if(getVariableVal(loopVariable) > loopTargetVal) {
             return skipLoop(pH);
         }
+          // if not, do the loop
         while(getVariableVal(loopVariable) < loopTargetVal) {
             pH->currentTokenIndex = loopStartIndex;
             pH->hangingBraces++;
@@ -612,10 +619,13 @@ int executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, dou
                 return syntaxError(pH, "WHERE error");
             }
         }
+      
     } else {
+          //check if condition is already met
         if(getVariableVal(loopVariable) < loopTargetVal) {
             return skipLoop(pH);
         }
+          // if not, do the loop
         while(getVariableVal(loopVariable) > loopTargetVal) {
             pH->currentTokenIndex = loopStartIndex;
             pH->hangingBraces++;
@@ -631,6 +641,7 @@ int executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, dou
 // parses a loop but doesn't alter any values from SET commands within the loop. Used when not interpretting or when interpreter comes accross a loop it should never enter
 int skipLoop(ParseHandler pH)
 {
+    // switch off interpretting, but record interpretting status to return later
     int returnToInterpretting;
     if(pH->interpret) {
         returnToInterpretting = 1;
@@ -645,6 +656,15 @@ int skipLoop(ParseHandler pH)
     
     pH->interpret = returnToInterpretting;
     
+    // if program is interpretting, warn user of error but don't exit
+    if(!successfulParse) {
+      if(pH->interpret) {
+          if(pH->showSyntaxErrors) {
+              printf("Warning: bypassed syntax error within while loop\n");
+          }
+          return 1;
+      }
+    }
     return successfulParse;
 }
     
@@ -788,14 +808,9 @@ void runParserWhiteBoxTests()
     sput_run_test(testSetAssignment);
     sput_leave_suite();
     
-    sput_enter_suite("testDOloops(): Testing syntax parsing of DO loops");
-    sput_run_test(testDOloops);
-    sput_leave_suite();
-    
     sput_finish_testing();
 
 }
-
 
 
 void testHandlerInitialisation()
@@ -815,51 +830,98 @@ void testSetAssignment()
     shutDownParsing();
 }
 
-   
-   
-void testDOloops()
-{
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_simpleDO.txt", TESTING) == 1, "Parsed simple DO loop ok");
-    shutDownParsing();
 
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TESTING) == 0, "Will not parse DO without opening brace");
-    shutDownParsing();
+void runInterpreterBlackBoxTests()
+{
+    sput_start_testing();
+	  
+	  sput_set_output_stream(NULL);
+	  
+	  sput_enter_suite("testDoMaths(): testing the doing of the maths");
+    sput_run_test(testDoMaths);
+    sput_leave_suite();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TESTING) == 0, "Will not parse DO without closing brace");
-    shutDownParsing();
+	  sput_enter_suite("testVariableHandling(): testing valid/invalid variables, variable assignment and returning variable contents");
+    sput_run_test(testVariableHandling);
+    sput_leave_suite();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_noFROM_DO.txt", TESTING) == 0, "Will not parse DO without FROM keyword");
-    shutDownParsing();
+	  sput_enter_suite("testNumberChecking(): testing the checkForNumber() function");
+    sput_run_test(testNumberChecking);
+    sput_leave_suite();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_noTO_DO.txt", TESTING) == 0, "Will not parse DO without TO keyword");
-    shutDownParsing();
-    
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_nestedDO.txt", TESTING) == 1, "Parsed nested DO loop ok");
-    shutDownParsing();
-    
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_polishDO.txt", TESTING) == 1, "Parsed DO loop containing reverse polish ok");
-    shutDownParsing();
-    
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_complexDO.txt", TESTING) == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
-    shutDownParsing();
-    
-    sput_fail_unless(interpret("testingFiles/DO_Testing/test_simpleDOvalues.txt", TESTING) == 1 && (int) getVariableVal('B') == 20, "Interpreted simple DO loop with correct value at end");
-    shutDownParsing();
-    
-    sput_fail_unless(interpret("testingFiles/DO_Testing/test_nestedDOvalues.txt", TESTING) == 1 && (int) getVariableVal('D') == 31, "Interpreted nested DO loop with correct value at end");
-    shutDownParsing();
+    sput_finish_testing();
+
 }
 
+void testDoMaths()
+{
+    sput_fail_unless(doMaths(1, 4, add) == 5, "Adding correctly");
+    sput_fail_unless(doMaths(25, -13, subtract) == 38, "Subtracting correctly");
+    sput_fail_unless(doMaths(12, 4, divide) == 3, "Dividing correctly");
+    sput_fail_unless(doMaths(20, 17, multiply) == 340, "Multiplying correctly");
+}
+
+void testVariableHandling()
+{
+    setUpForInterpreting(TESTING, INTERPRET);
+    sput_fail_unless(checkValidVariable('X') == 1, "Confirms variable X exists");
+    sput_fail_unless(checkValidVariable('a') == 0, "Confirms variable a doesn't exist");
+    sput_fail_unless(checkValidVariable('%') == 0, "Can handle percent symbol");
+    sput_fail_unless(checkValidVariable('+') == 0, "Can handle mathematical operators");
+    
+    double checkVal = 0;
+    sput_fail_unless(checkVariableAssigned('X', INTERPRET, &checkVal) == 0 && checkVal == 0, "Variable X is initially unassigned when interpreting");
+    assignValToVariable('X', 34, INTERPRET);
+    sput_fail_unless(checkVariableAssigned('X', INTERPRET, &checkVal) == 1 && checkVal == 34, "Variable X is assigned and set ok when interpreting");
+    
+    sput_fail_unless(checkVariableAssigned('Q', INTERPRET, &checkVal) == 0, "Variable Q is initially unassigned when not interpreting");
+    checkVal = 0;
+    assignValToVariable('Q', 15, DONT_INTERPRET);
+    sput_fail_unless(checkVariableAssigned('Q', DONT_INTERPRET, &checkVal) == 1 && checkVal == 0, "Variable Q is assigned ok and value is not set when not interpreting");
+    
+    shutDownInterpreting();
+}
+
+void testNumberChecking()
+{
+    setUpForInterpreting(TESTING, INTERPRET);
+    
+    double checkVal = 12;
+    sput_fail_unless(checkForNumber("X", &checkVal) == 0 && checkVal == 12, "Confirms X is not a number and doesn't alter contents of pointer passed to function");
+    sput_fail_unless(checkForNumber("The West Midlands", &checkVal) == 0 && checkVal == 12, "Confirms The West Midlands is not a number and doesn't alter contents of pointer passed to function");
+    sput_fail_unless(checkForNumber("25", &checkVal) == 1 && checkVal == 25, "Confirms 25 is a number and sets pointer contents correctly");
+    sput_fail_unless(checkForNumber("-25", &checkVal) == 1 && checkVal == -25, "Confirms -25 is a number and sets pointer contents correctly");
+    sput_fail_unless(checkForNumber("38547.1698", &checkVal) == 1 && checkVal == 38547.1698, "Confirms 38547.1698 is a number and sets pointer contents correctly");
+    
+    shutDownInterpreting();
+}
+
+
+
+
+
 // independent main function - used in testing
-// command line compile code: gcc -O4 -Wall -pedantic -std=c99 -lm -o parseTest parser.c interpreter.c display.c
-/*  
+// command line compile code: gcc `sdl2-config --cflags` -O4 -Wall -pedantic -std=c99 -o parseTest parser.c interpreter.c display.c -lm `sdl2-config --libs`
+/*
 int main(void)
 {
     runParserWhiteBoxTests();
     
-    //runInterpreterBlackBoxTests();
+    runInterpreterBlackBoxTests();
 }
+
 */
+
+
+
+
+
+
+
+
+
+
+
 
 
 

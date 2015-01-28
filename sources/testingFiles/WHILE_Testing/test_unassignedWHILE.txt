@@ -1,6 +1,6 @@
 {
 FD 1
-SET A := 30
+SET A := 30 ;
 WHILE B > 25 {
   LT 5
   FD 10

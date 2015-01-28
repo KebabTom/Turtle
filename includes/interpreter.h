@@ -102,6 +102,7 @@ void runInterpreterWhiteBoxTests();
 void testTurtleInitialisation();
 void testTurtleActions();
 void testValStack();
+void testPositionStack();
 
 
 
