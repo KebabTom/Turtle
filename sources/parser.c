@@ -99,34 +99,31 @@ void freeParseHandler()
 // PARSING FUNCTIONS
 ////////////////////
 
-void setUpForParsing(char *filePath, int testMode)
+void setUpForParsing(char *filePath, int testMode, int interpretMode)
 {
     createParseHandler();
     initialiseParseHandler(filePath, testMode);
-    createValStack();
-    setUpForInterpreting(testMode);
+    
+    ParseHandler pH = getParseHandlerPointer(NULL);
+    pH->interpret = interpretMode;
+    setUpForInterpreting(testMode, pH->interpret);
     
 }
 
 int parse(char * filePath, int testMode)
 {
-    setUpForParsing(filePath, testMode);
+    setUpForParsing(filePath, testMode, DONT_INTERPRET);
     
     ParseHandler pH = getParseHandlerPointer(NULL);
-    pH->interpret = 0;
-    
     int parsed = processMain(pH);
     return parsed;
 }
 
 int interpret(char *filePath, int testMode)
 {
-    
-    setUpForParsing(filePath, testMode);
+    setUpForParsing(filePath, testMode, INTERPRET);
     
     ParseHandler pH = getParseHandlerPointer(NULL);
-    pH->interpret = 1;
-    
     int interpreted = processMain(pH);
     return interpreted;
 }
@@ -291,6 +288,7 @@ int checkForEndOfCode(ParseHandler pH)
     return 1;
 }
 
+/* <INSTRCTLIST>: */
 // <INSTRUCTION> <INSTRCTLIST> | "}"
 int processInstructionList(ParseHandler pH)
 {
@@ -314,31 +312,39 @@ int processInstructionList(ParseHandler pH)
     return syntaxError(pH, "Invalid instruction");
 }
 
+/* <INSTRUCTION>: */
+// <FD> | <LT> | <RT> | <BKSTP> | <SET> | <DO> | <WHILE> | <CLR> | <PN>
 int processInstruction(ParseHandler pH)
 {
     
     TokenType t = whatToken(pH->token);
     
     switch(t) {
+          // <FD> | <LT> | <RT> | <BKSTP>
         case fd :
         case lt :
         case rt :
         case bkStep :
-            if(!processVarNum(pH)) {
+            if(!processAction(pH)) {
                 return 0;
             }
             if(pH->interpret) {
                 doAction(t, pH->val);
             }
             return 1;
+          // <SET>
         case set :
             return processSet(pH);
+          // <DO>
         case doToken :
             return processDo(pH);
+          // <WHILE>
         case whileToken :
             return processWhile(pH);
+          // <CLR>
         case colour :
             return processColour(pH);
+          // <PN>
         case penChange :
             if(pH->interpret) {
                 switchPenStatus();
@@ -350,11 +356,12 @@ int processInstruction(ParseHandler pH)
     }
 }
             
-
-
-int processVarNum(ParseHandler pH)
+// "FD" | "LT" | "RT" | "BKSTP" (already asserted in processInstruction() )
+// <VARNUM>
+int processAction(ParseHandler pH)
 {
     if(!getToken(pH)) {return 0;}
+      // <VARNUM>
     if(checkForVarNum(pH->token)) {
         return 1;
     }
@@ -364,22 +371,24 @@ int processVarNum(ParseHandler pH)
     return 0;
     
 }
-            
-        
 
+/* <SET>: */
+// "SET" <VAR> ":=" <POLISH> ("SET" already asserted in processInstruction() )
 int processSet(ParseHandler pH)
 {
     if(!getToken(pH)) {return 0;}
+      // <VAR>
     if(!checkForAnyVar(pH->token)) {
         return 0;
     }
-    
     char varToSet = pH->token[0];
     
     if(!getToken(pH)) {return 0;}
+      // ":="
     if(whatToken(pH->token) != equals) {
         return 0;
     }
+      // <POLISH>
     if(!processPolish(pH)) {
         return 0;
     }
@@ -388,33 +397,37 @@ int processSet(ParseHandler pH)
     
 }
 
+
+/* <POLISH>: */
+
+// <VARNUM> <POLISH> |
+// <OP> <POLISH> |
+// ";"
 int processPolish(ParseHandler pH)
 {
     if(!getToken(pH)) {return 0;}
     
-    if(whatToken(pH->token) == num) {
+      // <VARNUM>
+    if(checkForVarNum(pH->token)) {
         pushToValStack(pH->val);
-        return processPolish(pH);;
+           // <POLISH>
+        return processPolish(pH);
     }
-    
-    // if not a number, token should be a variable or operator
     
     if(strlen(pH->token) != 1) {
         return syntaxError(pH, "all reverse polish operators/variables should only be 1 character long separated by spaces");
     }
     
-    if(checkForVarNum(pH->token)) {
-        pushToValStack(pH->val);
-        return processPolish(pH);
-    }
-    
+      // <OP>
     if(whatToken(pH->token) == op) {
         if(!processOperator(pH) ) {
             return 0;
         }
+          // <POLISH>
         return processPolish(pH);
     }
     
+      // ";"
     if(whatToken(pH->token) == semicolon) {
         return finishPolish(pH);
     }
@@ -423,6 +436,9 @@ int processPolish(ParseHandler pH)
 }
 
 
+/* <OP>: */
+
+// "+" | "-" | "*" | "/"
 int processOperator(ParseHandler pH)
 {
     double a, b;
@@ -436,6 +452,7 @@ int processOperator(ParseHandler pH)
     return 1;
 }
 
+// assigns final value from reverse polish expression to current val in ParseHandler and checks there are no values left over in expression
 int finishPolish(ParseHandler pH)
 {
     popFromValStack(&pH->val);
@@ -446,43 +463,47 @@ int finishPolish(ParseHandler pH)
     }
 }
 
+
+/* <DO>: */
+
+// "DO" <VAR> "FROM" <VARNUM> "TO" <VARNUM> "{" <INSTRCTLST> ("DO" already asserted in processInstruction() )
 int processDo(ParseHandler pH)
 {
+      // <VAR>
     if(!getToken(pH)) {return 0;}
     if(!checkForAnyVar(pH->token)) {
         return syntaxError(pH, "invalid variable following DO command");
     }
     char loopVariable = pH->token[0];
     
+      // "FROM"
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != from) {
         return syntaxError(pH, "missing FROM in DO command");
     }
     
+      // <VARNUM>
     if(!getToken(pH)) {return 0;}
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following FROM in DO command");
     }
-    
     int loopVal = (int) getTokenVal(pH);
     assignValToVariable(loopVariable, (double)loopVal, pH->interpret);
     
+      // "TO"
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != to) {
         return syntaxError(pH, "missing TO in DO command");
     }
     
+      // <VARNUM>
     if(!getToken(pH)) {return 0;}
     if(!checkForVarNum(pH->token)) {
         return syntaxError(pH, "invalid variable/number following TO in DO command");
     }
+    int loopTargetVal = (int) getTokenVal(pH);
     
-    
-    int loopEndingVal = (int) getTokenVal(pH);
-    
-    
-    
-    
+      // "{" (hanging braces is incremented within the loop)
     if(!getToken(pH)) {return 0;}
     if(whatToken(pH->token) != openBrace) {
         return syntaxError(pH, "missing opening brace in DO loop initialisation");
@@ -491,18 +512,51 @@ int processDo(ParseHandler pH)
     // record token index to restart loop
     int doLoopStartIndex = pH->currentTokenIndex;
     
-    for(int i = loopVal; i <= loopEndingVal; i++) {
+      // <INSTRCTLST>
+    if(loopVal <= loopTargetVal) {
+        return executeUpwardsDoLoop(pH, doLoopStartIndex, loopVariable, loopVal, loopTargetVal);
+    } else {
+        return executeDownwardsDoLoop(pH, doLoopStartIndex, loopVariable, loopVal, loopTargetVal);
+    }
+    
+
+}
+
+
+int executeUpwardsDoLoop(ParseHandler pH, int doLoopStartIndex, char loopVariable, int loopVal, int loopTargetVal)
+{
+    for(int i = loopVal; i <= loopTargetVal; i++) {
+          // if interpreting, assign incremented value to loop variable
         assignValToVariable(loopVariable, (double)i, pH->interpret);
+        
+          // reset token location and increase number of hanging braces
         pH->currentTokenIndex = doLoopStartIndex;
         pH->hangingBraces++;
         
-        
+          // carry out the embedded instruction list
         if(!processInstructionList(pH)) {
             return syntaxError(pH, "DO error");
         }
     }
     return 1;
+}
 
+int executeDownwardsDoLoop(ParseHandler pH, int doLoopStartIndex, char loopVariable, int loopVal, int loopTargetVal)
+{
+    for(int i = loopVal; i >= loopTargetVal; i--) {
+          // if interpreting, assign decremented value to loop variable
+        assignValToVariable(loopVariable, (double)i, pH->interpret);
+        
+          // reset token location and increase number of hanging braces
+        pH->currentTokenIndex = doLoopStartIndex;
+        pH->hangingBraces++;
+        
+          // carry out the embedded instruction list
+        if(!processInstructionList(pH)) {
+            return syntaxError(pH, "DO error");
+        }
+    }
+    return 1;
 }
 
 int processWhile(ParseHandler pH)
@@ -540,11 +594,11 @@ int processWhile(ParseHandler pH)
         return skipLoop(pH);
     }
     
-    return processWhileLoop(pH, loopType, loopVariable, loopTargetVal, loopStartIndex);
+    return executeWhileLoop(pH, loopType, loopVariable, loopTargetVal, loopStartIndex);
 }
 
 // processes while loop until while condition is met. If consition is initially unset, parses loop once but doesn't set any values
-int processWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, double loopTargetVal, int loopStartIndex)
+int executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, double loopTargetVal, int loopStartIndex)
 {
     if(loopType == lessThan) {
         if(getVariableVal(loopVariable) > loopTargetVal) {
@@ -747,7 +801,7 @@ void runParserWhiteBoxTests()
 void testHandlerInitialisation()
 {
     createParseHandler();
-    initialiseParseHandler("testingFiles/parserTesting.txt", TEST_WHITEBOX);
+    initialiseParseHandler("testingFiles/parserTesting.txt", TESTING);
     ParseHandler pH = getParseHandlerPointer(NULL);
     
     sput_fail_unless(pH->tokenFP != NULL, "Parser Handler sets token file pointer on initialisation");
@@ -757,7 +811,7 @@ void testHandlerInitialisation()
 
 void testSetAssignment()
 {
-    sput_fail_unless(interpret("testingFiles/SET_Testing/test_selfSET.txt", TEST_WHITEBOX) == 1 && getVariableVal('C') == 10, "Interpreted variable setting itself with correct value (e.g. C += C ;)");
+    sput_fail_unless(interpret("testingFiles/SET_Testing/test_selfSET.txt", TESTING) == 1 && getVariableVal('C') == 10, "Interpreted variable setting itself with correct value (e.g. C += C ;)");
     shutDownParsing();
 }
 
@@ -765,40 +819,40 @@ void testSetAssignment()
    
 void testDOloops()
 {
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_simpleDO.txt", TEST_WHITEBOX) == 1, "Parsed simple DO loop ok");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_simpleDO.txt", TESTING) == 1, "Parsed simple DO loop ok");
     shutDownParsing();
 
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TEST_WHITEBOX) == 0, "Will not parse DO without opening brace");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutOpeningBrace.txt", TESTING) == 0, "Will not parse DO without opening brace");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TEST_WHITEBOX) == 0, "Will not parse DO without closing brace");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_DOwithoutClosingBrace.txt", TESTING) == 0, "Will not parse DO without closing brace");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_noFROM_DO.txt", TEST_WHITEBOX) == 0, "Will not parse DO without FROM keyword");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_noFROM_DO.txt", TESTING) == 0, "Will not parse DO without FROM keyword");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_noTO_DO.txt", TEST_WHITEBOX) == 0, "Will not parse DO without TO keyword");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_noTO_DO.txt", TESTING) == 0, "Will not parse DO without TO keyword");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_nestedDO.txt", TEST_WHITEBOX) == 1, "Parsed nested DO loop ok");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_nestedDO.txt", TESTING) == 1, "Parsed nested DO loop ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_polishDO.txt", TEST_WHITEBOX) == 1, "Parsed DO loop containing reverse polish ok");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_polishDO.txt", TESTING) == 1, "Parsed DO loop containing reverse polish ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/DO_Testing/test_complexDO.txt", TEST_WHITEBOX) == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
+    sput_fail_unless(parse("testingFiles/DO_Testing/test_complexDO.txt", TESTING) == 1, "Parsed complex nested DO loop containing SET & reverse polish ok");
     shutDownParsing();
     
-    sput_fail_unless(interpret("testingFiles/DO_Testing/test_simpleDOvalues.txt", TEST_WHITEBOX) == 1 && (int) getVariableVal('B') == 20, "Interpreted simple DO loop with correct value at end");
+    sput_fail_unless(interpret("testingFiles/DO_Testing/test_simpleDOvalues.txt", TESTING) == 1 && (int) getVariableVal('B') == 20, "Interpreted simple DO loop with correct value at end");
     shutDownParsing();
     
-    sput_fail_unless(interpret("testingFiles/DO_Testing/test_nestedDOvalues.txt", TEST_WHITEBOX) == 1 && (int) getVariableVal('D') == 31, "Interpreted nested DO loop with correct value at end");
+    sput_fail_unless(interpret("testingFiles/DO_Testing/test_nestedDOvalues.txt", TESTING) == 1 && (int) getVariableVal('D') == 31, "Interpreted nested DO loop with correct value at end");
     shutDownParsing();
 }
 
 // independent main function - used in testing
-// command line compile code: gcc -O4 -Wall -pedantic -std=c99 -lm -o parseTest parser.c interpreter.c
-/*
+// command line compile code: gcc -O4 -Wall -pedantic -std=c99 -lm -o parseTest parser.c interpreter.c display.c
+/*  
 int main(void)
 {
     runParserWhiteBoxTests();

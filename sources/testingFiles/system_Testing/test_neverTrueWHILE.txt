@@ -8,4 +8,5 @@ WHILE A < 10 {
   FD 20
   }
 FD 25
+LT 40
 }

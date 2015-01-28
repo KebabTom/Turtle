@@ -2,16 +2,18 @@
 #include "../includes/sput.h"
 #include <math.h>
 
-#define MAX_ANGLE 360
-#define DRAW_SDL_IN_TESTS 0
-#define NUMBER_OF_VARIABLES 26
+#define DRAW_SDL_IN_TESTS 0 // set to 1 to draw SDL during testing
+
+#define MAX_ANGLE 360 // used to mod turtle's angle so it never goes beyond 360 degrees. Technically not necessary but useful in testing
+#define NUMBER_OF_VARIABLES 26 // the number of variables in the variable list (26 as A-Z)
+
+#define INTERPRET 1
+#define DONT_INTERPRET 0
 
 
-#define NO_TESTING 0
-#define TEST_WHITEBOX 1
-#define TEST_BLACKBOX 2
-#define TEST_SYSTEM 3
-#define TEST_ALL 4
+#define NO_TESTING 0 // passed as input to functions when user runs program. Means SDL will always be drawn when interpretting
+#define TESTING 1 // passed as input to test functions - if passed, SDL is only displayed if indicated by DRAW_SDL_IN_TESTS
+
 
 typedef struct positionStack *PositionStack ;
 typedef struct positionNode *PositionNode ;
@@ -38,13 +40,13 @@ enum penUpDown {
 typedef enum penUpDown PenUpDown;
 
 
-void setUpForInterpreting(int testMode);
+void setUpForInterpreting(int testMode, int interpretMode);
 void shutDownInterpreting();
 
 // TURTLE STRUCTURE FUNCTIONS
 void createTurtle();
 Turtle getTurtlePointer(Turtle newTurtle);
-void initialiseTurtle(int testMode);
+void initialiseTurtle(int testMode, int interpretMode);
 void initialiseVariableList(Turtle t);
 void freeTurtle();
 

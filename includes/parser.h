@@ -15,7 +15,7 @@ void readInTokensFromFile();
 void freeParseHandler();
 
 // PARSING FUNCTIONS
-void setUpForParsing(char *filePath, int testMode);
+void setUpForParsing(char *filePath, int testMode, int interpretMode);
 int parse(char * filePath, int testMode);
 int  interpret(char *filePath, int testMode);
 void shutDownParsing();
@@ -29,14 +29,16 @@ int  processMain(ParseHandler pH);
 int  checkForEndOfCode(ParseHandler pH);
 int  processInstructionList(ParseHandler pH);
 int  processInstruction(ParseHandler pH);
-int  processVarNum(ParseHandler pH);
+int  processAction(ParseHandler pH);
 int  processSet(ParseHandler pH);
 int  processPolish(ParseHandler pH);
 int  processOperator(ParseHandler pH);
 int  finishPolish(ParseHandler pH);
 int  processDo(ParseHandler pH);
+int  executeUpwardsDoLoop(ParseHandler pH, int doLoopStartIndex, char loopVariable, int loopVal, int loopTargetVal);
+int  executeDownwardsDoLoop(ParseHandler pH, int doLoopStartIndex, char loopVariable, int loopVal, int loopTargetVal);
 int  processWhile(ParseHandler pH);
-int  processWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, double loopTargetVal, int loopStartIndex);
+int  executeWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, double loopTargetVal, int loopStartIndex);
 int  skipLoop(ParseHandler pH);
 int  processColour(ParseHandler pH);
 

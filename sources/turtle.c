@@ -45,17 +45,18 @@ void runFullProgram(char *filePath)
         fprintf(stderr, "Incorrect value entered, program has exited\n");
         exit(1);
     }
-    setUpForParsing(filePath, NO_TESTING);
     
     int processedOK;
     
     if(interpretFile) {
         processedOK = interpret(filePath, NO_TESTING);
+        holdScreenUntilUserInput();
     } else {   
         processedOK = parse(filePath, NO_TESTING);
+        if(DRAW_SDL_IN_TESTS) {
+            holdScreenUntilUserInput();
+        }
     }
-    
-    holdScreenUntilUserInput();
     
     shutDownParsing();
     
@@ -193,24 +194,24 @@ void testCommandLine()
         }
     }
     
-    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check detects error when only one argument passed");
+    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check detects error when only one argument passed");
     
     argc = 4;
-    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check detects error when more than 3 arguments passed");
+    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check detects error when more than 3 arguments passed");
     
     argc = 3;
     strcpy(argv[1], "testwrong");
-    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check detects error when 2nd of 3 arguments is not 'test' passed");
+    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check detects error when 2nd of 3 arguments is not 'test' passed");
     
     strcpy(argv[1], "test");
     strcpy(argv[2], "all");
-    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 1, "Input check OK when 3 arguments and third is 'all'");
+    sput_fail_unless(checkInput(argc, argv, TESTING) == 1, "Input check OK when 3 arguments and third is 'all'");
     strcpy(argv[2], "white");
-    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 1, "Input check OK when 3 arguments and third is 'white'");
+    sput_fail_unless(checkInput(argc, argv, TESTING) == 1, "Input check OK when 3 arguments and third is 'white'");
     strcpy(argv[2], "black");
-    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 1, "Input check OK when 3 arguments and third is 'black'");
+    sput_fail_unless(checkInput(argc, argv, TESTING) == 1, "Input check OK when 3 arguments and third is 'black'");
     strcpy(argv[2], "testwrong");
-    sput_fail_unless(checkInput(argc, argv, TEST_WHITEBOX) == 0, "Input check OK when 3 arguments and third is neither 'all', 'black' or 'white'");
+    sput_fail_unless(checkInput(argc, argv, TESTING) == 0, "Input check OK when 3 arguments and third is neither 'all', 'black' or 'white'");
     
     for(int i = 0; i < 3; i++) {
         free(argv[i]);
@@ -257,105 +258,105 @@ void runParserBlackBoxTests()
 
 void testSyntaxErrors()
 {
-    sput_fail_unless(parse("testingFiles/test_simpleParse.txt", TEST_WHITEBOX) == 1, "Parsed simple RT, LT and FD commands ok");
+    sput_fail_unless(parse("testingFiles/test_simpleParse.txt", TESTING) == 1, "Parsed simple RT, LT and FD commands ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/test_noClosingBrace.txt", TEST_WHITEBOX) == 0, "Will not parse text with no closing brace");
+    sput_fail_unless(parse("testingFiles/test_noClosingBrace.txt", TESTING) == 0, "Will not parse text with no closing brace");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/test_noOpeningBrace.txt", TEST_WHITEBOX) == 0, "Will not parse text with no opening brace");
+    sput_fail_unless(parse("testingFiles/test_noOpeningBrace.txt", TESTING) == 0, "Will not parse text with no opening brace");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/test_textAfterClosingBrace.txt", TEST_WHITEBOX) == 0, "Will not parse text when there is remaining text after last brace");
+    sput_fail_unless(parse("testingFiles/test_textAfterClosingBrace.txt", TESTING) == 0, "Will not parse text when there is remaining text after last brace");
     shutDownParsing();
 }
 
 void testVarNum()
 {
-    sput_fail_unless(parse("testingFiles/VarNum_Testing/test_simpleVarNum.txt", TEST_WHITEBOX) == 1, "Parsed simple access of set variable OK");
+    sput_fail_unless(parse("testingFiles/VarNum_Testing/test_simpleVarNum.txt", TESTING) == 1, "Parsed simple access of set variable OK");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/VarNum_Testing/test_uninitialisedVarNum.txt", TEST_WHITEBOX) == 0, "Will not parse text when variable is used uninitialised");
+    sput_fail_unless(parse("testingFiles/VarNum_Testing/test_uninitialisedVarNum.txt", TESTING) == 0, "Will not parse text when variable is used uninitialised");
     shutDownParsing();
 }
 
 void testSetCommand()
 {
-    sput_fail_unless(parse("testingFiles/SET_Testing/test_simpleSET.txt", TEST_WHITEBOX) == 1, "Parsed simple SET commands ok");
+    sput_fail_unless(parse("testingFiles/SET_Testing/test_simpleSET.txt", TESTING) == 1, "Parsed simple SET commands ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETmultiple.txt", TEST_WHITEBOX) == 1, "Parsed multiple SET commands to same variable ok");
+    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETmultiple.txt", TESTING) == 1, "Parsed multiple SET commands to same variable ok");
     shutDownParsing();
 
-    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolish.txt", TEST_WHITEBOX) == 1, "Parsed SET commands with reverse polish maths ok");
+    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolish.txt", TESTING) == 1, "Parsed SET commands with reverse polish maths ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolishUndefined.txt", TEST_WHITEBOX) == 0, "Will not parse command performing reverse polish on undefined variable");
+    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolishUndefined.txt", TESTING) == 0, "Will not parse command performing reverse polish on undefined variable");
     
-    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETlongPolish.txt", TEST_WHITEBOX) == 1, "Parsed SET commands using long Polish expression ok");
+    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETlongPolish.txt", TESTING) == 1, "Parsed SET commands using long Polish expression ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolishTooManyVariables.txt", TEST_WHITEBOX) == 0, "Will not parse SET command with unbalanced (too many variables) reverse polish equation");
+    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolishTooManyVariables.txt", TESTING) == 0, "Will not parse SET command with unbalanced (too many variables) reverse polish equation");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TEST_WHITEBOX) == 0, "Will not parse SET command with unbalanced (too many operators) reverse polish equation");
+    sput_fail_unless(parse("testingFiles/SET_Testing/test_SETpolishTooManyOperators.txt", TESTING) == 0, "Will not parse SET command with unbalanced (too many operators) reverse polish equation");
     shutDownParsing();
 }
 
 void testBackstepCommand()
 {
-    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_simpleBKSTP.txt", TEST_WHITEBOX) == 1, "Parsed simple BKSTP command ok");
+    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_simpleBKSTP.txt", TESTING) == 1, "Parsed simple BKSTP command ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_overflowBKSTP.txt", TEST_WHITEBOX) == 1, "Parsed BKSTP ok when there are more BKSTP commands than actions");
+    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_overflowBKSTP.txt", TESTING) == 1, "Parsed BKSTP ok when there are more BKSTP commands than actions");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_skipSET.txt", TEST_WHITEBOX) == 1, "Parsed BKSTP when separated from action by SET commands ok");
+    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_skipSET.txt", TESTING) == 1, "Parsed BKSTP when separated from action by SET commands ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_multipleForked.txt", TEST_WHITEBOX) == 1, "Parsed multiple forked BKSTP commands ok");
+    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_multipleForked.txt", TESTING) == 1, "Parsed multiple forked BKSTP commands ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_unassignedVarBKSTP.txt", TEST_WHITEBOX) == 0, "Will not parse BKSTP when used with unassigned variable");
+    sput_fail_unless(parse("testingFiles/BKSTP_Testing/test_unassignedVarBKSTP.txt", TESTING) == 0, "Will not parse BKSTP when used with unassigned variable");
     shutDownParsing();
 }
 
 void testWhileCommand()
 {
-    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_simpleWHILE.txt", TEST_WHITEBOX) == 1, "Parsed simple WHILE loop ok");
+    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_simpleWHILE.txt", TESTING) == 1, "Parsed simple WHILE loop ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_nestedWHILE.txt", TEST_WHITEBOX) == 1, "Parsed nested WHILE loop ok");
+    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_nestedWHILE.txt", TESTING) == 1, "Parsed nested WHILE loop ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_unassignedWHILE.txt", TEST_WHITEBOX) == 0, "Will not parse WHILE loop set up with unassigned variable");
+    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_unassignedWHILE.txt", TESTING) == 0, "Will not parse WHILE loop set up with unassigned variable");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_noBraceWHILE.txt", TEST_WHITEBOX) == 0, "Will not parse WHILE loop with no opening brace");
+    sput_fail_unless(parse("testingFiles/WHILE_Testing/test_noBraceWHILE.txt", TESTING) == 0, "Will not parse WHILE loop with no opening brace");
     shutDownParsing();
 }
 
 void testPenSwitchCommand()
 {
-    sput_fail_unless(parse("testingFiles/PN_Testing/test_simplePEN.txt", TEST_WHITEBOX) == 1, "Parsed pen switch ok");
+    sput_fail_unless(parse("testingFiles/PN_Testing/test_simplePEN.txt", TESTING) == 1, "Parsed pen switch ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/PN_Testing/test_multiplePEN.txt", TEST_WHITEBOX) == 1, "Parsed multiple pen switches ok");
+    sput_fail_unless(parse("testingFiles/PN_Testing/test_multiplePEN.txt", TESTING) == 1, "Parsed multiple pen switches ok");
     shutDownParsing();
 }
 
 void testColourCommand()
 {
-    sput_fail_unless(parse("testingFiles/CLR_Testing/test_setColour.txt", TEST_WHITEBOX) == 1, "Parsed setting draw colour ok");
+    sput_fail_unless(parse("testingFiles/CLR_Testing/test_setColour.txt", TESTING) == 1, "Parsed setting draw colour ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/CLR_Testing/test_randomColour.txt", TEST_WHITEBOX) == 1, "Parsed setting random draw colour ok");
+    sput_fail_unless(parse("testingFiles/CLR_Testing/test_randomColour.txt", TESTING) == 1, "Parsed setting random draw colour ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/CLR_Testing/test_advanceColour.txt", TEST_WHITEBOX) == 1, "Parsed advancing draw colour ok");
+    sput_fail_unless(parse("testingFiles/CLR_Testing/test_advanceColour.txt", TESTING) == 1, "Parsed advancing draw colour ok");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/CLR_Testing/test_incorrectColour.txt", TEST_WHITEBOX) == 0, "Will not parse if CLR followed by incorrect symbol");
+    sput_fail_unless(parse("testingFiles/CLR_Testing/test_incorrectColour.txt", TESTING) == 0, "Will not parse if CLR followed by incorrect symbol");
     shutDownParsing();
 }
 
@@ -376,15 +377,15 @@ void systemTesting()
     sput_fail_unless(interpret("testingFiles/system_Testing/test_polish.txt", TEST_SYSTEM) == 1, "Interpreted reverse polish file ok");
     sput_fail_unless(getTurtleX() == SCREEN_WIDTH/2, "Turtle in correct x position after long polish expression determining moves");
     sput_fail_unless(getTurtleY() == SCREEN_HEIGHT/2, "Turtle in correct y position after long polish expression determining moves");
-    sput_fail_unless(getTurtleAngle() == 270, "Turtle at correct angle after after long polish expression determining moves");
+    sput_fail_unless(getTurtleAngle() == 270, "Turtle at correct angle after long polish expression determining moves");
     shutDownParsing();
     
-    sput_fail_unless(parse("testingFiles/system_Testing/test_neverTrueWHILE.txt", TEST_SYSTEM) == 1, "parsed reverse polish file ok");
+    sput_fail_unless(parse("testingFiles/system_Testing/test_neverTrueWHILE.txt", TEST_SYSTEM) == 1, "parsed never true while loop ok");
     shutDownParsing();
-    sput_fail_unless(interpret("testingFiles/system_Testing/test_neverTrueWHILE.txt", TEST_SYSTEM) == 1, "interpreted ");
-    sput_fail_unless(getTurtleX() == SCREEN_WIDTH/2, "Turtle in correct x position after long polish expression determining moves");
-    sput_fail_unless(getTurtleY() == SCREEN_HEIGHT/2, "Turtle in correct y position after long polish expression determining moves");
-    sput_fail_unless(getTurtleAngle() == 270, "Turtle at correct angle after after long polish expression determining moves");
+    sput_fail_unless(interpret("testingFiles/system_Testing/test_neverTrueWHILE.txt", TEST_SYSTEM) == 1, "interpreted never true while loop ok");
+    sput_fail_unless(getTurtleX() == SCREEN_WIDTH/2, "Turtle in correct x position after interpretting never true while loop");
+    sput_fail_unless(getTurtleY() == (SCREEN_HEIGHT/2) - 45, "Turtle in correct y position after interpretting never true while loop");
+    sput_fail_unless(getTurtleAngle() == 320, "Turtle at correct angle after after interpretting never true while loop");
     shutDownParsing();
     
     

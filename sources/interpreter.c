@@ -50,11 +50,12 @@ struct valNode {
 ////  SETUP/SHUTDOWN FUNCTIONS //////////////////////////////////////////////////////
 /*..........................................................................*/
 
-void setUpForInterpreting(int testMode)
+void setUpForInterpreting(int testMode, int interpretMode)
 {
     createTurtle();
-    initialiseTurtle(testMode);
+    initialiseTurtle(testMode, interpretMode);
     createPositionStack();
+    createValStack();
     
     Turtle t = getTurtlePointer(NULL);
     if(t->drawTurtle) {
@@ -97,7 +98,7 @@ Turtle getTurtlePointer(Turtle newTurtle)
     return t;
 }
 
-void initialiseTurtle(int testMode)
+void initialiseTurtle(int testMode, int interpretMode)
 {
     Turtle t = getTurtlePointer(NULL);
     
@@ -112,7 +113,11 @@ void initialiseTurtle(int testMode)
     initialiseVariableList(t);
     
     if(testMode == NO_TESTING) {
-        t->drawTurtle = 1;
+        if(interpretMode == INTERPRET) {
+            t->drawTurtle = 1;
+        } else {
+            t->drawTurtle = 0;
+        }
     } else {
         t->drawTurtle = DRAW_SDL_IN_TESTS;
     }
@@ -583,7 +588,7 @@ void runInterpreterWhiteBoxTests()
 
 void testTurtleInitialisation()
 {
-    setUpForInterpreting(TEST_WHITEBOX);
+    setUpForInterpreting(TESTING, DONT_INTERPRET);
     Turtle t = getTurtlePointer(NULL);
     
     sput_fail_unless(t->x == SCREEN_WIDTH/2, "Turtle initialised with correct x coordinate");
@@ -598,7 +603,7 @@ void testTurtleInitialisation()
 
 void testTurtleActions()
 {
-    setUpForInterpreting(TEST_WHITEBOX);
+    setUpForInterpreting(TESTING, DONT_INTERPRET);
     Turtle t = getTurtlePointer(NULL);
     
     doAction(rt, 60);
