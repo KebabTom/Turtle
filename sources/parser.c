@@ -144,7 +144,7 @@ int getToken(ParseHandler pH)
     if(pH->currentTokenIndex < pH->numberOfTokens-1) {
         pH->currentTokenIndex++;
         pH->token = pH->tokenArray[pH->currentTokenIndex];
-   // printf("%s\n", pH->token);
+    //printf("%s\n", pH->token);
         return 1;
     }
     
@@ -180,7 +180,7 @@ void resizeTokenArray(ParseHandler pH)
     }
 }
         
-
+// analyses the token string and returns an enum for the type of token.
 TokenType whatToken(char *token)
 {
     ParseHandler pH = getParseHandlerPointer(NULL);
@@ -257,16 +257,18 @@ int checkForInstruction(char *chkToken)
     }
 }
         
-
+// "{" <INSTRCTLIST>
 int processMain(ParseHandler pH)
 {
     if(!getToken(pH)) {return 0;}
     
+      // "{"
     if(whatToken(pH->token) != openBrace ) {
         return syntaxError(pH, "all code sections should begin with an opening brace");
     }
     pH->hangingBraces++;
     
+      // <INSTRCTLIST>
     if(processInstructionList(pH) ) {
         if(pH->hangingBraces == 0) {
             return checkForEndOfCode(pH);
@@ -289,27 +291,26 @@ int checkForEndOfCode(ParseHandler pH)
     return 1;
 }
 
+// <INSTRUCTION> <INSTRCTLIST> | "}"
 int processInstructionList(ParseHandler pH)
 {
     if(!getToken(pH)) {return 0;}
     
-    if(whatToken(pH->token) == openBrace) {
-        pH->hangingBraces++;
-        return(processInstructionList(pH));
-    }
-    
+      // <INSTRUCTON>
     if(checkForInstruction(pH->token) ){
         if(!processInstruction(pH)) {
             return 0;
         }
+          // <INSTRCTLIST>
         return processInstructionList(pH);
-    } else {
-    
-        if(whatToken(pH->token) == closeBrace) {
-            pH->hangingBraces--;
-            return 1;
-        }
     }
+    
+      // "}"
+    if(whatToken(pH->token) == closeBrace) {
+        pH->hangingBraces--;
+        return 1;
+    }
+        
     return syntaxError(pH, "Invalid instruction");
 }
 
@@ -479,14 +480,21 @@ int processDo(ParseHandler pH)
     
     int loopEndingVal = (int) getTokenVal(pH);
     
+    
+    
+    
+    if(!getToken(pH)) {return 0;}
+    if(whatToken(pH->token) != openBrace) {
+        return syntaxError(pH, "missing opening brace in DO loop initialisation");
+    }
+    
     // record token index to restart loop
     int doLoopStartIndex = pH->currentTokenIndex;
-    
-    
     
     for(int i = loopVal; i <= loopEndingVal; i++) {
         assignValToVariable(loopVariable, (double)i, pH->interpret);
         pH->currentTokenIndex = doLoopStartIndex;
+        pH->hangingBraces++;
         
         
         if(!processInstructionList(pH)) {
@@ -519,6 +527,12 @@ int processWhile(ParseHandler pH)
     
     double loopTargetVal = getTokenVal(pH);
     
+    
+    if(!getToken(pH)) {return 0;}
+    if(whatToken(pH->token) != openBrace) {
+        return syntaxError(pH, "missing opening brace in DO loop initialisation");
+    }
+    
     // record token index to restart loop
     int loopStartIndex = pH->currentTokenIndex;
     
@@ -538,6 +552,7 @@ int processWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, dou
         }
         while(getVariableVal(loopVariable) < loopTargetVal) {
             pH->currentTokenIndex = loopStartIndex;
+            pH->hangingBraces++;
             
             if(!processInstructionList(pH)) {
                 return syntaxError(pH, "WHERE error");
@@ -549,6 +564,7 @@ int processWhileLoop(ParseHandler pH, TokenType loopType, char loopVariable, dou
         }
         while(getVariableVal(loopVariable) > loopTargetVal) {
             pH->currentTokenIndex = loopStartIndex;
+            pH->hangingBraces++;
             
             if(!processInstructionList(pH)) {
                 return syntaxError(pH, "WHERE error");
@@ -568,6 +584,8 @@ int skipLoop(ParseHandler pH)
     } else {
         returnToInterpretting = 0;
     }
+    
+    pH->hangingBraces++;
     
     int successfulParse = processInstructionList(pH);
     
